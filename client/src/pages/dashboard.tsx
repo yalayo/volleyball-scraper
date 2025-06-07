@@ -55,7 +55,7 @@ export default function Dashboard() {
     queryKey: ["/api/players"],
   });
 
-  const { data: logs = [], isLoading: logsLoading } = useQuery<ScrapeLog[]>({
+  const { data: scrapeLogs = [], isLoading: scrapeLogsLoading, refetch: refetchScrapeLogs } = useQuery<ScrapeLog[]>({
     queryKey: ["/api/scrape-logs"],
   });
 
@@ -67,18 +67,19 @@ export default function Dashboard() {
     refetchLeagues();
     refetchTeams();
     refetchPlayers();
+    refetchScrapeLogs();
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'success':
-        return <Badge variant="default" className="bg-green-100 text-green-800"><CheckCircle className="w-3 h-3 mr-1" />Success</Badge>;
-      case 'error':
-        return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />Error</Badge>;
-      case 'warning':
-        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800"><AlertTriangle className="w-3 h-3 mr-1" />Warning</Badge>;
+      case "success":
+        return <Badge className="bg-green-100 text-green-800"><CheckCircle className="w-3 h-3 mr-1" />Success</Badge>;
+      case "error":
+        return <Badge className="bg-red-100 text-red-800"><XCircle className="w-3 h-3 mr-1" />Error</Badge>;
+      case "running":
+        return <Badge className="bg-blue-100 text-blue-800"><RefreshCw className="w-3 h-3 mr-1 animate-spin" />Running</Badge>;
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge variant="secondary"><AlertTriangle className="w-3 h-3 mr-1" />Unknown</Badge>;
     }
   };
 
@@ -87,28 +88,21 @@ export default function Dashboard() {
       key: "name",
       header: "League Name",
       render: (league: League) => (
-        <div>
-          <div className="font-medium text-gray-900">{league.name}</div>
-          <div className="text-sm text-gray-500">{league.url}</div>
-        </div>
+        <div className="font-medium text-gray-900">{league.name}</div>
       ),
     },
     {
       key: "category",
       header: "Category",
       render: (league: League) => (
-        <Badge variant="secondary">{league.category}</Badge>
+        <Badge variant="outline">{league.category || "Unknown"}</Badge>
       ),
     },
     {
-      key: "seriesId",
-      header: "Series ID",
+      key: "season",
+      header: "Season",
       render: (league: League) => (
-        league.seriesId ? (
-          <code className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">{league.seriesId}</code>
-        ) : (
-          <span className="text-gray-400">-</span>
-        )
+        <span className="text-gray-600">{league.season || "-"}</span>
       ),
     },
     {
@@ -117,23 +111,27 @@ export default function Dashboard() {
       render: (league: League) => league.teamsCount || 0,
     },
     {
-      key: "updatedAt",
-      header: "Last Updated",
+      key: "url",
+      header: "Source",
       render: (league: League) => 
-        league.updatedAt ? formatDistanceToNow(new Date(league.updatedAt), { addSuffix: true }) : "-",
+        league.url ? (
+          <a 
+            href={league.url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-800"
+          >
+            <ExternalLink className="w-4 h-4" />
+          </a>
+        ) : "-",
     },
     {
-      key: "actions",
-      header: "Actions",
+      key: "updatedAt",
+      header: "Last Updated",
       render: (league: League) => (
-        <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="sm">
-            <Eye className="w-4 h-4" />
-          </Button>
-          <Button variant="ghost" size="sm">
-            <RotateCcw className="w-4 h-4" />
-          </Button>
-        </div>
+        <span className="text-sm text-gray-500">
+          {league.updatedAt ? formatDistanceToNow(new Date(league.updatedAt), { addSuffix: true }) : "-"}
+        </span>
       ),
     },
   ];
@@ -145,12 +143,9 @@ export default function Dashboard() {
       render: (team: Team & { league?: League }) => (
         <div className="flex items-center space-x-3">
           {team.logoUrl && (
-            <img src={team.logoUrl} alt={`${team.name} logo`} className="w-8 h-8 rounded object-cover" />
+            <img src={team.logoUrl} alt={`${team.name} logo`} className="w-8 h-8 rounded" />
           )}
-          <div>
-            <div className="font-medium text-gray-900">{team.name}</div>
-            {team.location && <div className="text-sm text-gray-500">{team.location}</div>}
-          </div>
+          <div className="font-medium text-gray-900">{team.name}</div>
         </div>
       ),
     },
@@ -161,42 +156,40 @@ export default function Dashboard() {
         team.league ? team.league.name : "-",
     },
     {
+      key: "playersCount",
+      header: "Players",
+      render: (team: Team) => 
+        team.playersCount ? (
+          <Badge variant="secondary">{team.playersCount}</Badge>
+        ) : (
+          <span className="text-gray-400">0</span>
+        ),
+    },
+    {
       key: "homepage",
       header: "Homepage",
-      render: (team: Team) => 
-        team.homepage ? (
+      render: (team: Team) => {
+        if (!team.homepage) return <span className="text-gray-400">-</span>;
+        return (
           <a 
             href={team.homepage} 
             target="_blank" 
             rel="noopener noreferrer"
-            className="flex items-center space-x-1 text-blue-600 hover:text-blue-800"
+            className="text-blue-600 hover:text-blue-800 flex items-center space-x-1"
           >
             <ExternalLink className="w-4 h-4" />
-            <span className="text-sm">Visit</span>
+            <span>Visit</span>
           </a>
-        ) : (
-          <span className="text-gray-400">-</span>
-        ),
+        );
+      },
     },
     {
       key: "teamId",
       header: "Team ID",
-      render: (team: Team) => (
-        <code className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">{team.teamId}</code>
-      ),
-    },
-    {
-      key: "players",
-      header: "Players",
-      render: (team: Team) => {
-        const teamPlayers = players.filter(p => p.teamId === team.id);
-        return (
-          <div className="flex items-center space-x-1">
-            <UserIcon className="w-4 h-4 text-gray-500" />
-            <span className="text-sm font-medium">{teamPlayers.length}</span>
-          </div>
-        );
-      },
+      render: (team: Team) => 
+        team.teamId ? (
+          <code className="bg-gray-100 px-2 py-1 rounded text-sm">{team.teamId}</code>
+        ) : "-",
     },
     {
       key: "updatedAt",
@@ -247,6 +240,37 @@ export default function Dashboard() {
       header: "Last Updated",
       render: (player: Player) => 
         player.updatedAt ? formatDistanceToNow(new Date(player.updatedAt), { addSuffix: true }) : "-",
+    },
+  ];
+
+  const logColumns = [
+    {
+      key: "operation",
+      header: "Operation",
+      render: (log: ScrapeLog) => (
+        <div className="font-medium">{log.operation}</div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (log: ScrapeLog) => getStatusBadge(log.status),
+    },
+    {
+      key: "result",
+      header: "Result",
+      render: (log: ScrapeLog) => (
+        <div className="text-sm text-gray-600">{log.result || "-"}</div>
+      ),
+    },
+    {
+      key: "createdAt",
+      header: "Started",
+      render: (log: ScrapeLog) => (
+        <span className="text-sm text-gray-500">
+          {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}
+        </span>
+      ),
     },
   ];
 
@@ -439,8 +463,18 @@ export default function Dashboard() {
           <div className="px-6 py-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
-                <p className="text-sm text-gray-600">Monitor and manage volleyball data scraping operations</p>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {activeTab === "dashboard" ? "Dashboard" : 
+                   activeTab === "leagues" ? "Leagues" :
+                   activeTab === "teams" ? "Teams" :
+                   activeTab === "players" ? "Players" : "Logs"}
+                </h2>
+                <p className="text-sm text-gray-600">
+                  {activeTab === "dashboard" ? "Monitor and manage volleyball data scraping operations" :
+                   activeTab === "leagues" ? "Manage volleyball leagues and competitions" :
+                   activeTab === "teams" ? "View and organize team information" :
+                   activeTab === "players" ? "Browse player rosters and details" : "Track scraping activity and performance"}
+                </p>
               </div>
               <div className="flex items-center space-x-4">
                 {stats?.lastScrapeTime && (
@@ -462,174 +496,7 @@ export default function Dashboard() {
         {/* Main Content */}
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
           <div className="p-6">
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-              <StatsCard
-                title="Total Leagues"
-                value={statsLoading ? "..." : stats?.totalLeagues.toString() || "0"}
-                icon={<Trophy className="w-5 h-5 text-blue-600" />}
-                loading={statsLoading}
-              />
-              <StatsCard
-                title="Total Teams"
-                value={statsLoading ? "..." : stats?.totalTeams.toString() || "0"}
-                icon={<Users className="w-5 h-5 text-green-600" />}
-                loading={statsLoading}
-              />
-              <StatsCard
-                title="Total Players"
-                value={statsLoading ? "..." : stats?.totalPlayers.toString() || "0"}
-                icon={<Users className="w-5 h-5 text-orange-600" />}
-                loading={statsLoading}
-              />
-              <StatsCard
-                title="Active Series"
-                value={statsLoading ? "..." : stats?.totalSeries.toString() || "0"}
-                icon={<BarChart3 className="w-5 h-5 text-yellow-600" />}
-                loading={statsLoading}
-              />
-              <StatsCard
-                title="Last Scrape"
-                value={
-                  statsLoading 
-                    ? "..." 
-                    : stats?.lastScrapeTime 
-                      ? formatDistanceToNow(new Date(stats.lastScrapeTime), { addSuffix: true })
-                      : "Never"
-                }
-                icon={<Clock className="w-5 h-5 text-purple-600" />}
-                loading={statsLoading}
-              />
-            </div>
-
-            {/* Action Bar */}
-            <Card className="mb-8">
-              <CardContent className="p-6">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-1">Data Management</h3>
-                    <p className="text-sm text-gray-600">Manage scraped volleyball league data</p>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <Button variant="outline" className="flex items-center space-x-2">
-                      <Download className="w-4 h-4" />
-                      <span>Export</span>
-                    </Button>
-                    <Button onClick={handleRefreshData} className="flex items-center space-x-2">
-                      <RefreshCw className="w-4 h-4" />
-                      <span>RefreshCw</span>
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Data Tables */}
-            <Tabs defaultValue="leagues" className="space-y-6">
-              <TabsList>
-                <TabsTrigger value="leagues">Leagues</TabsTrigger>
-                <TabsTrigger value="teams">Teams</TabsTrigger>
-                <TabsTrigger value="players">Players</TabsTrigger>
-                <TabsTrigger value="logs">Scrape Logs</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="leagues">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Leagues Overview</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <DataTable 
-                      data={leagues} 
-                      columns={leagueColumns}
-                      loading={leaguesLoading}
-                    />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="teams">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Teams Overview</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <DataTable 
-                      data={teams} 
-                      columns={teamColumns}
-                      loading={teamsLoading}
-                    />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="players">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Players Overview</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <DataTable 
-                      data={players} 
-                      columns={playerColumns}
-                      loading={playersLoading}
-                    />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="logs">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Scraping Activity Log</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {logsLoading ? (
-                      <div className="text-center py-8">Loading logs...</div>
-                    ) : (
-                      <div className="space-y-4">
-                        {logs.length === 0 ? (
-                          <div className="text-center py-8 text-gray-500">
-                            No scraping logs found
-                          </div>
-                        ) : (
-                          logs.map((log) => (
-                            <div key={log.id} className="border border-gray-200 rounded-lg p-4">
-                              <div className="flex items-start space-x-3">
-                                <div className="flex-1">
-                                  <div className="flex items-center justify-between">
-                                    <p className="text-sm font-medium text-gray-900">
-                                      {log.operation}
-                                    </p>
-                                    <div className="flex items-center space-x-2">
-                                      {getStatusBadge(log.status)}
-                                      <p className="text-sm text-gray-500">
-                                        {log.createdAt ? formatDistanceToNow(new Date(log.createdAt), { addSuffix: true }) : ""}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <p className="text-sm text-gray-600 mt-1">{log.message}</p>
-                                  {log.details && (
-                                    <p className="text-xs text-gray-500 mt-1">{log.details}</p>
-                                  )}
-                                  <div className="mt-2 flex items-center space-x-4 text-xs text-gray-500">
-                                    {log.duration && <span>Duration: {log.duration}ms</span>}
-                                    {log.recordsProcessed !== undefined && <span>•</span>}
-                                    {log.recordsProcessed !== undefined && (
-                                      <span>Records: {log.recordsCreated} new, {log.recordsUpdated} updated</span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
+            {renderContent()}
           </div>
         </main>
       </div>

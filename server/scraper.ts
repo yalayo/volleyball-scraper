@@ -3,6 +3,93 @@ import * as cheerio from "cheerio";
 import { storage, type IStorage } from "./storage";
 import type { InsertLeague, InsertTeam, InsertPlayer, InsertScrapeLog } from "@shared/schema";
 
+// Helper functions for enhanced player detection
+function isValidPlayerName(text: string): boolean {
+  if (!text || text.length < 3 || text.length > 50) return false;
+  
+  // Must contain at least one space (first and last name)
+  if (!text.includes(' ')) return false;
+  
+  // Should not contain numbers (except maybe Roman numerals)
+  if (/\d/.test(text) && !/\b[IVX]+\b/.test(text)) return false;
+  
+  // Should not be common table headers or labels
+  const excludePatterns = [
+    /^(name|spieler|player|position|nummer|number|trikot|jersey)$/i,
+    /^(trainer|coach|betreuer|manager)$/i,
+    /^(datum|date|zeit|time|ort|location)$/i
+  ];
+  
+  return !excludePatterns.some(pattern => pattern.test(text.trim()));
+}
+
+function isValidPosition(text: string): boolean {
+  if (!text || text.length > 20) return false;
+  
+  const validPositions = [
+    'Trainer', 'Coach', 'Libero', 'Zuspieler', 'Außenangreifer', 'Mittelblocker',
+    'Diagonal', 'Universalspieler', 'Betreuer', 'Manager', 'Kapitän', 'Captain',
+    'T', 'L', 'Z', 'A', 'M', 'D', 'U', 'K'
+  ];
+  
+  return validPositions.some(pos => text.toLowerCase().includes(pos.toLowerCase()));
+}
+
+function extractPlayerFromText(text: string): { name: string; position: string | null; jerseyNumber: string | null } | null {
+  if (!text || text.length < 3 || text.length > 100) return null;
+  
+  // Pattern 1: "12. Max Mustermann (Trainer)"
+  let match = text.match(/^(\d+)\.?\s*([A-Za-zÄÖÜäöüß\s\-']+?)\s*(?:\(([^)]+)\))?$/);
+  if (match) {
+    const name = match[2].trim();
+    if (isValidPlayerName(name)) {
+      return {
+        name,
+        jerseyNumber: match[1],
+        position: match[3] || null
+      };
+    }
+  }
+  
+  // Pattern 2: "Max Mustermann (12)"
+  match = text.match(/^([A-Za-zÄÖÜäöüß\s\-']+?)\s*\((\d+)\)$/);
+  if (match) {
+    const name = match[1].trim();
+    if (isValidPlayerName(name)) {
+      return {
+        name,
+        jerseyNumber: match[2],
+        position: null
+      };
+    }
+  }
+  
+  // Pattern 3: "Max Mustermann - Trainer"
+  match = text.match(/^([A-Za-zÄÖÜäöüß\s\-']+?)\s*[-–]\s*([A-Za-z]+)$/);
+  if (match) {
+    const name = match[1].trim();
+    const position = match[2].trim();
+    if (isValidPlayerName(name) && isValidPosition(position)) {
+      return {
+        name,
+        jerseyNumber: null,
+        position
+      };
+    }
+  }
+  
+  // Pattern 4: Simple name
+  if (isValidPlayerName(text.trim())) {
+    return {
+      name: text.trim(),
+      jerseyNumber: null,
+      position: null
+    };
+  }
+  
+  return null;
+}
+
 interface ScrapedData {
   leagues: InsertLeague[];
   teams: InsertTeam[];
@@ -35,86 +122,144 @@ async function scrapeTeamPlayers(
 
     const $ = cheerio.load(response.data);
 
-    // Look for player information in various possible structures
-    // Method 1: Look for player tables
-    $('table tr').each((_, row) => {
-      const $row = $(row);
-      const cells = $row.find('td');
+    // Enhanced player detection with multiple methods
+    const foundNames = new Set<string>(); // Track duplicates
+    
+    // Method 1: Look for player tables with various column arrangements
+    $('table').each((_, table) => {
+      const $table = $(table);
+      const rows = $table.find('tr');
       
-      if (cells.length >= 2) {
-        const playerName = cells.eq(0).text().trim();
-        const jerseyNumber = cells.eq(1).text().trim();
-        const position = cells.length > 2 ? cells.eq(2).text().trim() : null;
+      rows.each((_, row) => {
+        const $row = $(row);
+        const cells = $row.find('td, th');
         
-        if (playerName && playerName !== 'Name' && playerName !== 'Spieler') {
+        if (cells.length >= 1) {
+          // Try different column arrangements
+          for (let i = 0; i < cells.length; i++) {
+            const cellText = cells.eq(i).text().trim();
+            
+            // Look for name patterns in each cell
+            if (isValidPlayerName(cellText) && !foundNames.has(cellText.toLowerCase())) {
+              foundNames.add(cellText.toLowerCase());
+              
+              // Try to find jersey number in adjacent cells
+              let jerseyNumber = null;
+              let position = null;
+              
+              // Check previous and next cells for numbers/positions
+              if (i > 0) {
+                const prevText = cells.eq(i - 1).text().trim();
+                if (/^\d+$/.test(prevText)) jerseyNumber = prevText;
+              }
+              if (i < cells.length - 1) {
+                const nextText = cells.eq(i + 1).text().trim();
+                if (/^\d+$/.test(nextText)) jerseyNumber = nextText;
+                else if (isValidPosition(nextText)) position = nextText;
+              }
+              if (i < cells.length - 2) {
+                const nextNextText = cells.eq(i + 2).text().trim();
+                if (isValidPosition(nextNextText)) position = nextNextText;
+              }
+              
+              players.push({
+                name: cellText,
+                position: position || null,
+                jerseyNumber: jerseyNumber || null,
+                teamId: teamDbId,
+                isActive: true
+              });
+            }
+          }
+        }
+      });
+    });
+
+    // Method 2: Look for player information in list structures
+    $('ul li, ol li, .list-item, .player-item').each((_, element) => {
+      const $element = $(element);
+      const text = $element.text().trim();
+      
+      const playerInfo = extractPlayerFromText(text);
+      if (playerInfo && !foundNames.has(playerInfo.name.toLowerCase())) {
+        foundNames.add(playerInfo.name.toLowerCase());
+        players.push({
+          ...playerInfo,
+          teamId: teamDbId,
+          isActive: true
+        });
+      }
+    });
+
+    // Method 3: Look for player cards or divs
+    $('.player, .spieler, [class*="player"], [class*="spieler"], .team-member, .roster').each((_, element) => {
+      const $element = $(element);
+      const text = $element.text().trim();
+      
+      const playerInfo = extractPlayerFromText(text);
+      if (playerInfo && !foundNames.has(playerInfo.name.toLowerCase())) {
+        foundNames.add(playerInfo.name.toLowerCase());
+        players.push({
+          ...playerInfo,
+          teamId: teamDbId,
+          isActive: true
+        });
+      }
+    });
+
+    // Method 4: Scan all text content for player patterns
+    if (players.length < 5) { // Only if we haven't found many players yet
+      $('p, span, div').each((_, element) => {
+        const $element = $(element);
+        const text = $element.text().trim();
+        
+        // Skip if too long (likely not a single player entry)
+        if (text.length > 80) return;
+        
+        const playerInfo = extractPlayerFromText(text);
+        if (playerInfo && !foundNames.has(playerInfo.name.toLowerCase())) {
+          foundNames.add(playerInfo.name.toLowerCase());
           players.push({
-            name: playerName,
-            position: position || null,
-            jerseyNumber: jerseyNumber || null,
+            ...playerInfo,
             teamId: teamDbId,
             isActive: true
           });
         }
+      });
+    }
+
+    // Method 5: Look for structured data in scripts or JSON
+    $('script').each((_, script) => {
+      const content = $(script).html();
+      if (content) {
+        // Look for player arrays in JavaScript
+        const playerArrayMatch = content.match(/players?\s*[:=]\s*\[(.*?)\]/is);
+        if (playerArrayMatch) {
+          try {
+            const playersData = playerArrayMatch[1];
+            // Extract quoted names
+            const nameMatches = playersData.match(/"([A-Za-zÄÖÜäöüß\s\-']{3,40})"/g);
+            if (nameMatches) {
+              nameMatches.forEach(match => {
+                const name = match.replace(/"/g, '');
+                if (isValidPlayerName(name) && !foundNames.has(name.toLowerCase())) {
+                  foundNames.add(name.toLowerCase());
+                  players.push({
+                    name,
+                    position: null,
+                    jerseyNumber: null,
+                    teamId: teamDbId,
+                    isActive: true
+                  });
+                }
+              });
+            }
+          } catch (error) {
+            // Ignore parsing errors
+          }
+        }
       }
     });
-
-    // Method 2: Look for player lists in div structures
-    if (players.length === 0) {
-      $('.player, .spieler, [class*="player"], [class*="spieler"]').each((_, element) => {
-        const $player = $(element);
-        const playerName = $player.text().trim();
-        
-        if (playerName && playerName.length > 2) {
-          // Try to extract jersey number from the text
-          const jerseyMatch = playerName.match(/(\d+)\s*[-.]?\s*(.+)/);
-          
-          if (jerseyMatch) {
-            players.push({
-              name: jerseyMatch[2].trim(),
-              position: null,
-              jerseyNumber: jerseyMatch[1],
-              teamId: teamDbId,
-              isActive: true
-            });
-          } else {
-            players.push({
-              name: playerName,
-              position: null,
-              jerseyNumber: null,
-              teamId: teamDbId,
-              isActive: true
-            });
-          }
-        }
-      });
-    }
-
-    // Method 3: Look for structured player data in spans or divs
-    if (players.length === 0) {
-      $('span, div').each((_, element) => {
-        const $element = $(element);
-        const text = $element.text().trim();
-        
-        // Look for patterns like "12. Max Mustermann" or "Max Mustermann (12)"
-        const playerPattern = /^(\d+)\.?\s*([A-Za-zÄÖÜäöüß\s\-']+)$|^([A-Za-zÄÖÜäöüß\s\-']+)\s*\((\d+)\)$/;
-        const match = text.match(playerPattern);
-        
-        if (match && text.length > 3 && text.length < 50) {
-          const name = (match[2] || match[3]).trim();
-          const number = match[1] || match[4];
-          
-          if (name && name.includes(' ')) { // Ensure it's a full name
-            players.push({
-              name,
-              position: null,
-              jerseyNumber: number || null,
-              teamId: teamDbId,
-              isActive: true
-            });
-          }
-        }
-      });
-    }
 
     // Save players to database
     const existingPlayers = await storageInstance.getPlayersByTeam(teamDbId);

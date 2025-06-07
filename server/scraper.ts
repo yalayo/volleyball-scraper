@@ -433,6 +433,171 @@ async function scrapeTeamPlayers(
   return players;
 }
 
+async function scrapeMatchResults(
+  baseUrl: string,
+  seriesId: string,
+  leagueDbId: number,
+  storageInstance: IStorage
+): Promise<InsertMatch[]> {
+  const matches: InsertMatch[] = [];
+  
+  try {
+    // Construct matches URL to access match results
+    const matchesUrl = baseUrl.replace(
+      /(&LeaguePresenter\.view=.*)?$/,
+      `&LeaguePresenter.matchSeriesId=${seriesId}&LeaguePresenter.view=matches&playingScheduleMode=full`
+    );
+
+    console.log(`Scraping matches from URL: ${matchesUrl}`);
+
+    const response = await axios.get(matchesUrl, {
+      timeout: 15000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    });
+
+    const $ = cheerio.load(response.data);
+
+    // Look for match results in datatable structure
+    $('tr.ui-widget-content').each((_, row) => {
+      const $row = $(row);
+      const cells = $row.find('td');
+      
+      if (cells.length >= 6) {
+        // Extract team names and match results
+        const homeTeamName = $(cells.eq(1)).text().trim();
+        const awayTeamName = $(cells.eq(3)).text().trim();
+        const resultText = $(cells.eq(2)).text().trim(); // Usually contains score like "3:1" or "25:23, 25:20, 20:25, 25:18"
+        const dateText = $(cells.eq(0)).text().trim();
+
+        if (homeTeamName && awayTeamName && resultText && resultText.includes(':')) {
+          // Parse match result
+          const match = parseMatchResult(homeTeamName, awayTeamName, resultText, dateText, seriesId, leagueDbId);
+          if (match) {
+            matches.push(match);
+          }
+        }
+      }
+    });
+
+    // Also look for results in other table structures
+    $('.ui-datatable tbody tr').each((_, row) => {
+      const $row = $(row);
+      const cells = $row.find('td');
+      
+      if (cells.length >= 4) {
+        const homeTeam = $(cells.eq(0)).text().trim();
+        const result = $(cells.eq(1)).text().trim();
+        const awayTeam = $(cells.eq(2)).text().trim();
+        const date = $(cells.eq(3)).text().trim();
+
+        if (homeTeam && awayTeam && result && result.includes(':')) {
+          const match = parseMatchResult(homeTeam, awayTeam, result, date, seriesId, leagueDbId);
+          if (match) {
+            matches.push(match);
+          }
+        }
+      }
+    });
+
+    console.log(`Found ${matches.length} matches for series ${seriesId}`);
+    
+  } catch (error) {
+    console.error(`Error scraping matches from ${baseUrl}:`, error);
+  }
+
+  return matches;
+}
+
+function parseMatchResult(
+  homeTeamName: string,
+  awayTeamName: string,
+  resultText: string,
+  dateText: string,
+  seriesId: string,
+  leagueId: number
+): InsertMatch | null {
+  try {
+    // Parse different result formats
+    // Format 1: "3:1" (sets won)
+    // Format 2: "25:23, 25:20, 20:25, 25:18" (detailed set scores)
+    
+    let homeSets = 0;
+    let awaySets = 0;
+    let homePoints = 0;
+    let awayPoints = 0;
+    let setResults = "";
+
+    if (resultText.includes(',')) {
+      // Detailed set scores
+      const sets = resultText.split(',').map(s => s.trim());
+      setResults = resultText;
+      
+      sets.forEach(set => {
+        const setMatch = set.match(/(\d+):(\d+)/);
+        if (setMatch) {
+          const homeSetScore = parseInt(setMatch[1]);
+          const awaySetScore = parseInt(setMatch[2]);
+          
+          homePoints += homeSetScore;
+          awayPoints += awaySetScore;
+          
+          if (homeSetScore > awaySetScore) {
+            homeSets++;
+          } else {
+            awaySets++;
+          }
+        }
+      });
+    } else {
+      // Simple set score like "3:1"
+      const setMatch = resultText.match(/(\d+):(\d+)/);
+      if (setMatch) {
+        homeSets = parseInt(setMatch[1]);
+        awaySets = parseInt(setMatch[2]);
+        setResults = resultText;
+      }
+    }
+
+    // Parse date
+    let matchDate: Date | null = null;
+    if (dateText) {
+      // Handle various date formats
+      const dateMatch = dateText.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+      if (dateMatch) {
+        const day = parseInt(dateMatch[1]);
+        const month = parseInt(dateMatch[2]) - 1; // Month is 0-indexed
+        const year = parseInt(dateMatch[3]);
+        matchDate = new Date(year, month, day);
+      }
+    }
+
+    const homeScore = homeSets > awaySets ? 1 : 0;
+    const awayScore = awaySets > homeSets ? 1 : 0;
+
+    return {
+      matchId: `${seriesId}_${homeTeamName}_${awayTeamName}`.replace(/[^a-zA-Z0-9_]/g, '_'),
+      homeTeamName,
+      awayTeamName,
+      homeScore,
+      awayScore,
+      homeSets,
+      awaySets,
+      setResults,
+      matchDate,
+      status: 'completed',
+      leagueId,
+      seriesId,
+      homeTeamId: null, // Will be updated when teams are linked
+      awayTeamId: null,
+    };
+  } catch (error) {
+    console.error('Error parsing match result:', error);
+    return null;
+  }
+}
+
 export async function scrapeVolleyballData(
   url: string,
   leagueName: string,
@@ -444,6 +609,7 @@ export async function scrapeVolleyballData(
     leagues: [],
     teams: [],
     players: [],
+    matches: [],
     seriesIds: [],
     samsIds: []
   };
@@ -680,6 +846,58 @@ export async function scrapeVolleyballData(
       }
     }
 
+    // Scrape match results if series ID is available
+    let matchCount = 0;
+    if (scrapedData.seriesIds.length > 0) {
+      console.log(`Scraping match results for ${scrapedData.seriesIds.length} series...`);
+      
+      for (const seriesId of scrapedData.seriesIds) {
+        try {
+          const matchResults = await scrapeMatchResults(url, seriesId, league.id, storageInstance);
+          scrapedData.matches.push(...matchResults);
+          
+          // Store matches in database
+          for (const matchData of matchResults) {
+            try {
+              // Try to link team IDs based on team names
+              const homeTeam = teamDatabaseIds.find(t => {
+                const storedTeam = teams.find(team => team.teamId === t.teamId);
+                return storedTeam && (
+                  storedTeam.name.toLowerCase().includes(matchData.homeTeamName.toLowerCase()) ||
+                  matchData.homeTeamName.toLowerCase().includes(storedTeam.name.toLowerCase())
+                );
+              });
+              
+              const awayTeam = teamDatabaseIds.find(t => {
+                const storedTeam = teams.find(team => team.teamId === t.teamId);
+                return storedTeam && (
+                  storedTeam.name.toLowerCase().includes(matchData.awayTeamName.toLowerCase()) ||
+                  matchData.awayTeamName.toLowerCase().includes(storedTeam.name.toLowerCase())
+                );
+              });
+              
+              if (homeTeam) matchData.homeTeamId = homeTeam.dbId;
+              if (awayTeam) matchData.awayTeamId = awayTeam.dbId;
+              
+              await storageInstance.createMatch(matchData);
+              matchCount++;
+              
+              // Update team statistics
+              if (homeTeam && awayTeam) {
+                await updateTeamStats(homeTeam.dbId, awayTeam.dbId, matchData, league.id, storageInstance);
+              }
+            } catch (error) {
+              console.error(`Failed to store match: ${matchData.homeTeamName} vs ${matchData.awayTeamName}`, error);
+            }
+          }
+        } catch (error) {
+          console.error(`Failed to scrape matches for series ${seriesId}:`, error);
+        }
+      }
+      
+      console.log(`Scraped ${matchCount} matches`);
+    }
+
     // Update league team count
     await storageInstance.updateLeague(league.id, { teamsCount: teamCount });
 
@@ -716,6 +934,63 @@ export async function scrapeVolleyballData(
 
     console.error(`Scraping failed for ${leagueName}:`, error);
     throw error;
+  }
+}
+
+async function updateTeamStats(
+  homeTeamId: number,
+  awayTeamId: number,
+  matchData: InsertMatch,
+  leagueId: number,
+  storageInstance: IStorage
+): Promise<void> {
+  try {
+    // Calculate points from set results
+    let homePoints = 0;
+    let awayPoints = 0;
+    
+    if (matchData.setResults && matchData.setResults.includes(',')) {
+      // Parse detailed set scores like "25:23, 25:20, 20:25, 25:18"
+      const sets = matchData.setResults.split(',').map(s => s.trim());
+      sets.forEach(set => {
+        const setMatch = set.match(/(\d+):(\d+)/);
+        if (setMatch) {
+          homePoints += parseInt(setMatch[1]);
+          awayPoints += parseInt(setMatch[2]);
+        }
+      });
+    }
+
+    // Update home team stats
+    const homeWon = (matchData.homeSets || 0) > (matchData.awaySets || 0) ? 1 : 0;
+    const homeLost = homeWon ? 0 : 1;
+
+    await storageInstance.updateOrCreateTeamStats(homeTeamId, leagueId, {
+      matchesPlayed: 1,
+      matchesWon: homeWon,
+      matchesLost: homeLost,
+      setsWon: matchData.homeSets || 0,
+      setsLost: matchData.awaySets || 0,
+      pointsFor: homePoints,
+      pointsAgainst: awayPoints,
+    });
+
+    // Update away team stats
+    const awayWon = homeLost;
+    const awayLost = homeWon;
+
+    await storageInstance.updateOrCreateTeamStats(awayTeamId, leagueId, {
+      matchesPlayed: 1,
+      matchesWon: awayWon,
+      matchesLost: awayLost,
+      setsWon: matchData.awaySets || 0,
+      setsLost: matchData.homeSets || 0,
+      pointsFor: awayPoints,
+      pointsAgainst: homePoints,
+    });
+
+  } catch (error) {
+    console.error(`Failed to update team stats for match ${homeTeamId} vs ${awayTeamId}:`, error);
   }
 }
 

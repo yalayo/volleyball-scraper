@@ -1,4 +1,4 @@
-import { users, leagues, teams, players, scrapeLogs, type User, type InsertUser, type League, type InsertLeague, type Team, type InsertTeam, type Player, type InsertPlayer, type ScrapeLog, type InsertScrapeLog } from "@shared/schema";
+import { users, leagues, teams, players, scrapeLogs, matches, teamStats, type User, type InsertUser, type League, type InsertLeague, type Team, type InsertTeam, type Player, type InsertPlayer, type ScrapeLog, type InsertScrapeLog, type Match, type InsertMatch, type TeamStats, type InsertTeamStats } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, count, sql } from "drizzle-orm";
 
@@ -31,6 +31,22 @@ export interface IStorage {
   updatePlayer(id: number, player: Partial<InsertPlayer>): Promise<Player | undefined>;
   deletePlayer(id: number): Promise<boolean>;
 
+  // Match methods
+  getMatches(): Promise<(Match & { homeTeam?: Team; awayTeam?: Team; league?: League })[]>;
+  getMatchesByLeague(leagueId: number): Promise<Match[]>;
+  getMatch(id: number): Promise<Match | undefined>;
+  createMatch(match: InsertMatch): Promise<Match>;
+  updateMatch(id: number, match: Partial<InsertMatch>): Promise<Match | undefined>;
+  deleteMatch(id: number): Promise<boolean>;
+
+  // Team Stats methods
+  getTeamStats(): Promise<(TeamStats & { team?: Team; league?: League })[]>;
+  getTeamStatsByLeague(leagueId: number): Promise<TeamStats[]>;
+  getTeamStatsByTeam(teamId: number): Promise<TeamStats[]>;
+  createTeamStats(stats: InsertTeamStats): Promise<TeamStats>;
+  updateTeamStats(id: number, stats: Partial<InsertTeamStats>): Promise<TeamStats | undefined>;
+  updateOrCreateTeamStats(teamId: number, leagueId: number, stats: Partial<InsertTeamStats>): Promise<TeamStats>;
+
   // Scrape log methods
   getScrapeLogsPaginated(offset: number, limit: number): Promise<ScrapeLog[]>;
   createScrapeLog(log: InsertScrapeLog): Promise<ScrapeLog>;
@@ -40,6 +56,7 @@ export interface IStorage {
     totalLeagues: number;
     totalTeams: number;
     totalPlayers: number;
+    totalMatches: number;
     totalSeries: number;
     lastScrapeTime: string | null;
   }>;
@@ -285,10 +302,204 @@ export class DatabaseStorage implements IStorage {
     return newLog;
   }
 
+  // Match methods implementation
+  async getMatches(): Promise<(Match & { homeTeam?: Team; awayTeam?: Team; league?: League })[]> {
+    const result = await db
+      .select({
+        id: matches.id,
+        matchId: matches.matchId,
+        homeTeamId: matches.homeTeamId,
+        awayTeamId: matches.awayTeamId,
+        homeTeamName: matches.homeTeamName,
+        awayTeamName: matches.awayTeamName,
+        homeScore: matches.homeScore,
+        awayScore: matches.awayScore,
+        homeSets: matches.homeSets,
+        awaySets: matches.awaySets,
+        setResults: matches.setResults,
+        matchDate: matches.matchDate,
+        status: matches.status,
+        leagueId: matches.leagueId,
+        seriesId: matches.seriesId,
+        createdAt: matches.createdAt,
+        updatedAt: matches.updatedAt,
+        homeTeam: {
+          id: teams.id,
+          name: teams.name,
+          location: teams.location,
+        },
+        awayTeam: {
+          id: teams.id,
+          name: teams.name,
+          location: teams.location,
+        },
+        league: {
+          id: leagues.id,
+          name: leagues.name,
+          category: leagues.category,
+        },
+      })
+      .from(matches)
+      .leftJoin(teams, eq(matches.homeTeamId, teams.id))
+      .leftJoin(leagues, eq(matches.leagueId, leagues.id))
+      .orderBy(desc(matches.matchDate));
+
+    return result.map(row => ({
+      id: row.id,
+      matchId: row.matchId,
+      homeTeamId: row.homeTeamId,
+      awayTeamId: row.awayTeamId,
+      homeTeamName: row.homeTeamName,
+      awayTeamName: row.awayTeamName,
+      homeScore: row.homeScore,
+      awayScore: row.awayScore,
+      homeSets: row.homeSets,
+      awaySets: row.awaySets,
+      setResults: row.setResults,
+      matchDate: row.matchDate,
+      status: row.status,
+      leagueId: row.leagueId,
+      seriesId: row.seriesId,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      homeTeam: row.homeTeam && row.homeTeam.id ? row.homeTeam : undefined,
+      league: row.league && row.league.id ? row.league : undefined,
+    }));
+  }
+
+  async getMatchesByLeague(leagueId: number): Promise<Match[]> {
+    return await db.select().from(matches).where(eq(matches.leagueId, leagueId));
+  }
+
+  async getMatch(id: number): Promise<Match | undefined> {
+    const [match] = await db.select().from(matches).where(eq(matches.id, id));
+    return match || undefined;
+  }
+
+  async createMatch(match: InsertMatch): Promise<Match> {
+    const [newMatch] = await db
+      .insert(matches)
+      .values(match)
+      .returning();
+    return newMatch;
+  }
+
+  async updateMatch(id: number, match: Partial<InsertMatch>): Promise<Match | undefined> {
+    const [updatedMatch] = await db
+      .update(matches)
+      .set({ ...match, updatedAt: new Date() })
+      .where(eq(matches.id, id))
+      .returning();
+    return updatedMatch || undefined;
+  }
+
+  async deleteMatch(id: number): Promise<boolean> {
+    const result = await db.delete(matches).where(eq(matches.id, id));
+    return result.rowCount > 0;
+  }
+
+  // Team Stats methods implementation
+  async getTeamStats(): Promise<(TeamStats & { team?: Team; league?: League })[]> {
+    const result = await db
+      .select({
+        id: teamStats.id,
+        teamId: teamStats.teamId,
+        leagueId: teamStats.leagueId,
+        matchesPlayed: teamStats.matchesPlayed,
+        matchesWon: teamStats.matchesWon,
+        matchesLost: teamStats.matchesLost,
+        setsWon: teamStats.setsWon,
+        setsLost: teamStats.setsLost,
+        pointsFor: teamStats.pointsFor,
+        pointsAgainst: teamStats.pointsAgainst,
+        createdAt: teamStats.createdAt,
+        updatedAt: teamStats.updatedAt,
+        team: {
+          id: teams.id,
+          name: teams.name,
+          location: teams.location,
+        },
+        league: {
+          id: leagues.id,
+          name: leagues.name,
+          category: leagues.category,
+        },
+      })
+      .from(teamStats)
+      .leftJoin(teams, eq(teamStats.teamId, teams.id))
+      .leftJoin(leagues, eq(teamStats.leagueId, leagues.id))
+      .orderBy(desc(teamStats.matchesWon));
+
+    return result.map(row => ({
+      id: row.id,
+      teamId: row.teamId,
+      leagueId: row.leagueId,
+      matchesPlayed: row.matchesPlayed,
+      matchesWon: row.matchesWon,
+      matchesLost: row.matchesLost,
+      setsWon: row.setsWon,
+      setsLost: row.setsLost,
+      pointsFor: row.pointsFor,
+      pointsAgainst: row.pointsAgainst,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      team: row.team && row.team.id ? row.team : undefined,
+      league: row.league && row.league.id ? row.league : undefined,
+    }));
+  }
+
+  async getTeamStatsByLeague(leagueId: number): Promise<TeamStats[]> {
+    return await db.select().from(teamStats).where(eq(teamStats.leagueId, leagueId));
+  }
+
+  async getTeamStatsByTeam(teamId: number): Promise<TeamStats[]> {
+    return await db.select().from(teamStats).where(eq(teamStats.teamId, teamId));
+  }
+
+  async createTeamStats(stats: InsertTeamStats): Promise<TeamStats> {
+    const [newStats] = await db
+      .insert(teamStats)
+      .values(stats)
+      .returning();
+    return newStats;
+  }
+
+  async updateTeamStats(id: number, stats: Partial<InsertTeamStats>): Promise<TeamStats | undefined> {
+    const [updatedStats] = await db
+      .update(teamStats)
+      .set({ ...stats, updatedAt: new Date() })
+      .where(eq(teamStats.id, id))
+      .returning();
+    return updatedStats || undefined;
+  }
+
+  async updateOrCreateTeamStats(teamId: number, leagueId: number, stats: Partial<InsertTeamStats>): Promise<TeamStats> {
+    const [existingStats] = await db
+      .select()
+      .from(teamStats)
+      .where(sql`${teamStats.teamId} = ${teamId} AND ${teamStats.leagueId} = ${leagueId}`);
+
+    if (existingStats) {
+      const [updatedStats] = await db
+        .update(teamStats)
+        .set({ ...stats, updatedAt: new Date() })
+        .where(eq(teamStats.id, existingStats.id))
+        .returning();
+      return updatedStats;
+    } else {
+      const [newStats] = await db
+        .insert(teamStats)
+        .values({ teamId, leagueId, ...stats })
+        .returning();
+      return newStats;
+    }
+  }
+
   async getStats(): Promise<{
     totalLeagues: number;
     totalTeams: number;
     totalPlayers: number;
+    totalMatches: number;
     totalSeries: number;
     lastScrapeTime: string | null;
   }> {
@@ -307,6 +518,10 @@ export class DatabaseStorage implements IStorage {
       .from(players)
       .where(eq(players.isActive, true));
 
+    const [matchCount] = await db
+      .select({ count: count() })
+      .from(matches);
+
     const [seriesCount] = await db
       .select({ count: count(leagues.seriesId) })
       .from(leagues)
@@ -323,6 +538,7 @@ export class DatabaseStorage implements IStorage {
       totalLeagues: leagueCount.count,
       totalTeams: teamCount.count,
       totalPlayers: playerCount.count,
+      totalMatches: matchCount.count,
       totalSeries: seriesCount.count,
       lastScrapeTime: lastScrape?.createdAt?.toISOString() || null,
     };

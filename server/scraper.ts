@@ -1,7 +1,7 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
 import { storage, type IStorage } from "./storage";
-import type { InsertLeague, InsertTeam, InsertPlayer, InsertScrapeLog } from "@shared/schema";
+import type { InsertLeague, InsertTeam, InsertPlayer, InsertMatch, InsertTeamStats, InsertScrapeLog } from "@shared/schema";
 
 // Helper functions for enhanced player detection
 function isValidPlayerName(text: string): boolean {
@@ -94,6 +94,7 @@ interface ScrapedData {
   leagues: InsertLeague[];
   teams: InsertTeam[];
   players: InsertPlayer[];
+  matches: InsertMatch[];
   seriesIds: string[];
   samsIds: string[];
 }

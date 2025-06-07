@@ -13,9 +13,11 @@ import {
 
 interface SidebarProps {
   onStartScraping: () => void;
+  activeTab: string;
+  onTabChange: (tab: string) => void;
 }
 
-export default function Sidebar({ onStartScraping }: SidebarProps) {
+export default function Sidebar({ onStartScraping, activeTab, onTabChange }: SidebarProps) {
   return (
     <div className="w-64 bg-white shadow-lg border-r border-gray-200 flex flex-col">
       {/* Header */}
@@ -36,52 +38,49 @@ export default function Sidebar({ onStartScraping }: SidebarProps) {
         <div className="px-3">
           <div className="space-y-1">
             <Button
-              variant="default"
-              className="w-full justify-start"
+              variant={activeTab === "dashboard" ? "default" : "ghost"}
+              className={`w-full justify-start ${activeTab === "dashboard" ? "" : "text-gray-700 hover:bg-gray-100"}`}
               size="sm"
+              onClick={() => onTabChange("dashboard")}
             >
               <BarChart3 className="w-4 h-4 mr-3" />
               Dashboard
             </Button>
             <Button
-              variant="ghost"
-              className="w-full justify-start text-gray-700 hover:bg-gray-100"
+              variant={activeTab === "leagues" ? "default" : "ghost"}
+              className={`w-full justify-start ${activeTab === "leagues" ? "" : "text-gray-700 hover:bg-gray-100"}`}
               size="sm"
+              onClick={() => onTabChange("leagues")}
             >
               <Trophy className="w-4 h-4 mr-3" />
               Leagues
             </Button>
             <Button
-              variant="ghost"
-              className="w-full justify-start text-gray-700 hover:bg-gray-100"
+              variant={activeTab === "teams" ? "default" : "ghost"}
+              className={`w-full justify-start ${activeTab === "teams" ? "" : "text-gray-700 hover:bg-gray-100"}`}
               size="sm"
+              onClick={() => onTabChange("teams")}
             >
               <Users className="w-4 h-4 mr-3" />
               Teams
             </Button>
             <Button
-              variant="ghost"
-              className="w-full justify-start text-gray-700 hover:bg-gray-100"
+              variant={activeTab === "players" ? "default" : "ghost"}
+              className={`w-full justify-start ${activeTab === "players" ? "" : "text-gray-700 hover:bg-gray-100"}`}
               size="sm"
+              onClick={() => onTabChange("players")}
             >
-              <Bot className="w-4 h-4 mr-3" />
-              Scraper
+              <Users className="w-4 h-4 mr-3" />
+              Players
             </Button>
             <Button
-              variant="ghost"
-              className="w-full justify-start text-gray-700 hover:bg-gray-100"
+              variant={activeTab === "logs" ? "default" : "ghost"}
+              className={`w-full justify-start ${activeTab === "logs" ? "" : "text-gray-700 hover:bg-gray-100"}`}
               size="sm"
+              onClick={() => onTabChange("logs")}
             >
               <FileText className="w-4 h-4 mr-3" />
               Logs
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-gray-700 hover:bg-gray-100"
-              size="sm"
-            >
-              <Settings className="w-4 h-4 mr-3" />
-              Settings
             </Button>
           </div>
         </div>

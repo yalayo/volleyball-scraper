@@ -37,6 +37,7 @@ interface Stats {
 
 export default function Dashboard() {
   const [showScrapingModal, setShowScrapingModal] = useState(false);
+  const [activeTab, setActiveTab] = useState("dashboard");
 
   const { data: stats, isLoading: statsLoading } = useQuery<Stats>({
     queryKey: ["/api/stats"],
@@ -249,9 +250,188 @@ export default function Dashboard() {
     },
   ];
 
+  const renderContent = () => {
+    switch (activeTab) {
+      case "dashboard":
+        return (
+          <>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+              <StatsCard
+                title="Total Leagues"
+                value={statsLoading ? "..." : stats?.totalLeagues.toString() || "0"}
+                icon={<Trophy className="w-5 h-5 text-blue-600" />}
+                loading={statsLoading}
+              />
+              <StatsCard
+                title="Total Teams"
+                value={statsLoading ? "..." : stats?.totalTeams.toString() || "0"}
+                icon={<Users className="w-5 h-5 text-green-600" />}
+                loading={statsLoading}
+              />
+              <StatsCard
+                title="Total Players"
+                value={statsLoading ? "..." : stats?.totalPlayers.toString() || "0"}
+                icon={<UserIcon className="w-5 h-5 text-purple-600" />}
+                loading={statsLoading}
+              />
+              <StatsCard
+                title="Series Found"
+                value={statsLoading ? "..." : stats?.totalSeries.toString() || "0"}
+                icon={<BarChart3 className="w-5 h-5 text-orange-600" />}
+                loading={statsLoading}
+              />
+              <StatsCard
+                title="Last Scrape"
+                value={statsLoading ? "..." : stats?.lastScrapeTime ? formatDistanceToNow(new Date(stats.lastScrapeTime), { addSuffix: true }) : "Never"}
+                icon={<Clock className="w-5 h-5 text-red-600" />}
+                loading={statsLoading}
+              />
+            </div>
+
+            {/* Tabbed Content */}
+            <Tabs defaultValue="leagues" className="w-full">
+              <TabsList className="grid grid-cols-4 w-fit">
+                <TabsTrigger value="leagues">Leagues</TabsTrigger>
+                <TabsTrigger value="teams">Teams</TabsTrigger>
+                <TabsTrigger value="players">Players</TabsTrigger>
+                <TabsTrigger value="logs">Activity Logs</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="leagues">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Leagues Overview</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <DataTable 
+                      data={leagues} 
+                      columns={leagueColumns}
+                      loading={leaguesLoading}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="teams">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Teams Overview</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <DataTable 
+                      data={teams} 
+                      columns={teamColumns}
+                      loading={teamsLoading}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="players">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Players Overview</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <DataTable 
+                      data={players} 
+                      columns={playerColumns}
+                      loading={playersLoading}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="logs">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Scraping Activity Log</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <DataTable 
+                      data={scrapeLogs} 
+                      columns={logColumns}
+                      loading={scrapeLogsLoading}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </>
+        );
+      case "leagues":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Leagues Management</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DataTable 
+                data={leagues} 
+                columns={leagueColumns}
+                loading={leaguesLoading}
+              />
+            </CardContent>
+          </Card>
+        );
+      case "teams":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Teams Management</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DataTable 
+                data={teams} 
+                columns={teamColumns}
+                loading={teamsLoading}
+              />
+            </CardContent>
+          </Card>
+        );
+      case "players":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Players Management</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DataTable 
+                data={players} 
+                columns={playerColumns}
+                loading={playersLoading}
+              />
+            </CardContent>
+          </Card>
+        );
+      case "logs":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Scraping Activity Logs</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DataTable 
+                data={scrapeLogs} 
+                columns={logColumns}
+                loading={scrapeLogsLoading}
+              />
+            </CardContent>
+          </Card>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar onStartScraping={handleStartScraping} />
+      <Sidebar 
+        onStartScraping={handleStartScraping}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
       
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}

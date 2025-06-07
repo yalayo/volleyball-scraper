@@ -128,6 +128,25 @@ async function scrapeTeamPlayers(
     console.log(`Scraping players for team ${teamId} from URL: ${teamUrl}`);
     
     // Method 1: Look for specific datatable structure with ui-widget-content classes
+    // First, identify table header structure to map columns correctly
+    const headerCells = $('th .ui-column-title');
+    const columnMap = new Map<string, number>();
+    
+    headerCells.each((index, header) => {
+      const headerText = $(header).text().trim().toLowerCase();
+      if (headerText.includes('spieler') || headerText.includes('player') || headerText.includes('name')) {
+        columnMap.set('player', index);
+      } else if (headerText.includes('nr.') || headerText.includes('number') || headerText.includes('jersey')) {
+        columnMap.set('jersey', index);
+      } else if (headerText.includes('position') || headerText.includes('pos')) {
+        columnMap.set('position', index);
+      } else if (headerText.includes('nat') || headerText.includes('nationality')) {
+        columnMap.set('nationality', index);
+      } else if (headerText.includes('status')) {
+        columnMap.set('status', index);
+      }
+    });
+
     $('tr.ui-widget-content.ui-datatable-odd, tr.ui-widget-content.ui-datatable-even, tr[class*="ui-widget-content"][class*="ui-datatable"]').each((_, row) => {
       const $row = $(row);
       const cells = $row.find('td');
@@ -148,23 +167,45 @@ async function scrapeTeamPlayers(
           if (playerName && teamMemberId && isValidPlayerName(playerName) && !foundPlayerIds.has(teamMemberId)) {
             foundPlayerIds.add(teamMemberId);
             
-            // Extract additional player info from the row
+            // Extract data based on column mapping
             let position = null;
             let jerseyNumber = null;
+            let nationality = null;
             
-            // Look for position or jersey number in adjacent cells
-            cells.each((_, cell) => {
-              const cellText = $(cell).text().trim();
-              if (/^\d+$/.test(cellText) && parseInt(cellText) < 100) {
-                jerseyNumber = cellText;
-              } else if (isValidPosition(cellText)) {
-                position = cellText;
+            // Use column mapping if available
+            if (columnMap.has('jersey') && cells.eq(columnMap.get('jersey')!)) {
+              const jerseyText = cells.eq(columnMap.get('jersey')!).text().trim();
+              if (/^\d+$/.test(jerseyText) && parseInt(jerseyText) < 100) {
+                jerseyNumber = jerseyText;
               }
-            });
+            }
+            
+            if (columnMap.has('position') && cells.eq(columnMap.get('position')!)) {
+              const posText = cells.eq(columnMap.get('position')!).text().trim();
+              if (isValidPosition(posText)) {
+                position = posText;
+              }
+            }
+            
+            if (columnMap.has('nationality') && cells.eq(columnMap.get('nationality')!)) {
+              nationality = cells.eq(columnMap.get('nationality')!).text().trim();
+            }
+            
+            // Fallback: scan all cells if column mapping didn't work
+            if (!jerseyNumber || !position) {
+              cells.each((_, cell) => {
+                const cellText = $(cell).text().trim();
+                if (!jerseyNumber && /^\d+$/.test(cellText) && parseInt(cellText) < 100) {
+                  jerseyNumber = cellText;
+                } else if (!position && isValidPosition(cellText)) {
+                  position = cellText;
+                }
+              });
+            }
             
             players.push({
               name: playerName,
-              position: position || null,
+              position: position || nationality || null, // Use nationality as position fallback
               jerseyNumber: jerseyNumber || null,
               teamId: teamDbId,
               playerId: teamMemberId,

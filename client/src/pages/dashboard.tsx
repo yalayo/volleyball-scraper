@@ -4,6 +4,7 @@ import Sidebar from "@/components/layout/sidebar";
 import StatsCard from "@/components/ui/stats-card";
 import DataTable from "@/components/ui/data-table";
 import ScrapingModal from "@/components/ui/scraping-modal";
+import TeamPlayersModal from "@/components/ui/team-players-modal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

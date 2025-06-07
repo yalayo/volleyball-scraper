@@ -39,6 +39,11 @@ interface Stats {
 export default function Dashboard() {
   const [showScrapingModal, setShowScrapingModal] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [teamPlayersModal, setTeamPlayersModal] = useState<{
+    open: boolean;
+    teamId: number;
+    teamName: string;
+  }>({ open: false, teamId: 0, teamName: "" });
 
   const { data: stats, isLoading: statsLoading } = useQuery<Stats>({
     queryKey: ["/api/stats"],
@@ -163,11 +168,24 @@ export default function Dashboard() {
         // Count players from the actual players data
         const playerCount = players.filter(p => p.teamId === team.id).length;
         return playerCount > 0 ? (
-          <Badge variant="secondary">{playerCount}</Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setTeamPlayersModal({
+              open: true,
+              teamId: team.id,
+              teamName: team.name
+            })}
+            className="h-6 px-2"
+          >
+            <UserIcon className="w-3 h-3 mr-1" />
+            {playerCount}
+          </Button>
         ) : (
           <span className="text-gray-400">0</span>
         );
       },
+      searchable: false,
     },
     {
       key: "homepage",
@@ -336,6 +354,7 @@ export default function Dashboard() {
                       data={leagues} 
                       columns={leagueColumns}
                       loading={leaguesLoading}
+                      searchPlaceholder="Search leagues..."
                     />
                   </CardContent>
                 </Card>
@@ -351,6 +370,7 @@ export default function Dashboard() {
                       data={teams} 
                       columns={teamColumns}
                       loading={teamsLoading}
+                      searchPlaceholder="Search teams..."
                     />
                   </CardContent>
                 </Card>
@@ -366,6 +386,7 @@ export default function Dashboard() {
                       data={players} 
                       columns={playerColumns}
                       loading={playersLoading}
+                      searchPlaceholder="Search players..."
                     />
                   </CardContent>
                 </Card>
@@ -381,6 +402,7 @@ export default function Dashboard() {
                       data={scrapeLogs} 
                       columns={logColumns}
                       loading={scrapeLogsLoading}
+                      searchPlaceholder="Search logs..."
                     />
                   </CardContent>
                 </Card>

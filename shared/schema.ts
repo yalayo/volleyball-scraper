@@ -41,6 +41,7 @@ export const players = pgTable("players", {
   name: text("name").notNull(),
   position: text("position"),
   jerseyNumber: text("jersey_number"),
+  playerId: text("player_id"), // Store teamMemberId from volleyball website
   teamId: integer("team_id").references(() => teams.id),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),

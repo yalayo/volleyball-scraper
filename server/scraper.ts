@@ -997,6 +997,15 @@ export async function scrapeVolleyballData(
       }
     }
 
+    // Scrape match results if we have a series ID
+    if (seriesId) {
+      console.log(`Scraping match results for series ${seriesId}...`);
+      const matchesUrl = url.replace(/LeaguePresenter\.view=[^&]*/, 'LeaguePresenter.view=matches');
+      const matches = await scrapeMatchResults(matchesUrl, seriesId, league.id, storageInstance);
+      scrapedData.matches.push(...matches);
+      console.log(`Found ${matches.length} matches for series ${seriesId}`);
+    }
+
     // Store extracted matches in database and update team statistics
     let matchCount = 0;
     if (scrapedData.matches.length > 0) {

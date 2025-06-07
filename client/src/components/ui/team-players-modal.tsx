@@ -38,6 +38,16 @@ export default function TeamPlayersModal({ open, onOpenChange, teamId, teamName 
         )
     },
     {
+      key: 'nationality',
+      header: 'Nationality',
+      render: (player: Player) => 
+        player.nationality ? (
+          <Badge variant="secondary">{player.nationality}</Badge>
+        ) : (
+          <span className="text-gray-400">-</span>
+        )
+    },
+    {
       key: 'position',
       header: 'Position',
       render: (player: Player) => 

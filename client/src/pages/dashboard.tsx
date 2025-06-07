@@ -236,11 +236,21 @@ export default function Dashboard() {
         player.team ? player.team.name : "-",
     },
     {
+      key: "nationality",
+      header: "Nationality",
+      render: (player: Player) => 
+        player.nationality ? (
+          <Badge variant="secondary">{player.nationality}</Badge>
+        ) : (
+          <span className="text-gray-400">-</span>
+        ),
+    },
+    {
       key: "position",
       header: "Position",
       render: (player: Player) => 
         player.position ? (
-          <Badge variant="secondary">{player.position}</Badge>
+          <Badge variant="outline">{player.position}</Badge>
         ) : (
           <span className="text-gray-400">-</span>
         ),

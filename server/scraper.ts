@@ -233,7 +233,7 @@ async function scrapeTeamPlayers(
       const content = $(script).html();
       if (content) {
         // Look for player arrays in JavaScript
-        const playerArrayMatch = content.match(/players?\s*[:=]\s*\[(.*?)\]/is);
+        const playerArrayMatch = content.match(/players?\s*[:=]\s*\[(.*?)\]/gi);
         if (playerArrayMatch) {
           try {
             const playersData = playerArrayMatch[1];

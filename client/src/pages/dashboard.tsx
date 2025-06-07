@@ -99,10 +99,10 @@ export default function Dashboard() {
       ),
     },
     {
-      key: "season",
-      header: "Season",
+      key: "seriesId",
+      header: "Series ID",
       render: (league: League) => (
-        <span className="text-gray-600">{league.season || "-"}</span>
+        <span className="text-gray-600">{league.seriesId || "-"}</span>
       ),
     },
     {
@@ -156,14 +156,17 @@ export default function Dashboard() {
         team.league ? team.league.name : "-",
     },
     {
-      key: "playersCount",
+      key: "players",
       header: "Players",
-      render: (team: Team) => 
-        team.playersCount ? (
-          <Badge variant="secondary">{team.playersCount}</Badge>
+      render: (team: Team) => {
+        // Count players from the actual players data
+        const playerCount = players.filter(p => p.teamId === team.id).length;
+        return playerCount > 0 ? (
+          <Badge variant="secondary">{playerCount}</Badge>
         ) : (
           <span className="text-gray-400">0</span>
-        ),
+        );
+      },
     },
     {
       key: "homepage",
@@ -257,10 +260,10 @@ export default function Dashboard() {
       render: (log: ScrapeLog) => getStatusBadge(log.status),
     },
     {
-      key: "result",
-      header: "Result",
+      key: "message",
+      header: "Message",
       render: (log: ScrapeLog) => (
-        <div className="text-sm text-gray-600">{log.result || "-"}</div>
+        <div className="text-sm text-gray-600">{log.message || "-"}</div>
       ),
     },
     {
@@ -268,7 +271,7 @@ export default function Dashboard() {
       header: "Started",
       render: (log: ScrapeLog) => (
         <span className="text-sm text-gray-500">
-          {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}
+          {log.createdAt ? formatDistanceToNow(new Date(log.createdAt), { addSuffix: true }) : "-"}
         </span>
       ),
     },

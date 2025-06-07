@@ -773,6 +773,72 @@ export async function scrapeVolleyballData(
     const teams: InsertTeam[] = [];
     let teamCount = 0;
 
+    // Extract match results FIRST if we're on a matches view page
+    if (url.includes('view=matches') && seriesId) {
+      console.log(`Extracting match results directly from matches page...`);
+      
+      // Look for match results in the current page HTML
+      $('tr').each((_, row) => {
+        const $row = $(row);
+        const resultSpan = $row.find('.samsMatchResultSetPoints');
+        
+        if (resultSpan.length > 0) {
+          const resultText = resultSpan.text().trim();
+          
+          if (resultText && resultText.includes(':')) {
+            const detailedSpan = $row.find('.samsMatchResultBallPoints');
+            const detailedText = detailedSpan.text().trim();
+            
+            // Extract team names from the same row
+            const teamNames: string[] = [];
+            $row.find('td').each((_, cell) => {
+              const $cell = $(cell);
+              
+              // Skip the result cell itself
+              if ($cell.hasClass('samsMatchResultTableCell')) {
+                return;
+              }
+              
+              // Look for team name in preFormatted span or cell text
+              const teamName = $cell.find('.preFormatted').text().trim() || $cell.text().trim();
+              
+              // Valid team name: not empty, not a score, not a date, reasonable length
+              if (teamName && 
+                  !teamName.includes(':') && 
+                  !teamName.match(/^\d{1,2}\.\d{1,2}/) && 
+                  !teamName.match(/^\d{1,2}:\d{2}/) && 
+                  teamName.length > 3 && 
+                  teamName.length < 50) {
+                teamNames.push(teamName);
+              }
+            });
+            
+            if (teamNames.length >= 2) {
+              const homeTeam = teamNames[0];
+              const awayTeam = teamNames[teamNames.length - 1];
+              
+              let finalResult = resultText;
+              if (detailedText && detailedText.includes('(')) {
+                const scoresMatch = detailedText.match(/\(([^)]+)\)/);
+                if (scoresMatch) {
+                  finalResult = scoresMatch[1].replace(/\s+/g, ', ');
+                }
+              }
+              
+              console.log(`Found volleyball match: ${homeTeam} vs ${awayTeam} - ${resultText} (detailed: ${finalResult})`);
+              const match = parseMatchResult(homeTeam, awayTeam, finalResult, '', seriesId, league.id);
+              
+              if (match) {
+                scrapedData.matches.push(match);
+              }
+            }
+          }
+        }
+      });
+      
+      console.log(`Found ${scrapedData.matches.length} matches on page`);
+    }
+
     // Look for teams in samsCmsTeamListComponentBlock structure
     $('.samsCmsComponentBlock.samsCmsTeamListComponentBlock').each((_, element) => {
       const $teamBlock = $(element);
@@ -931,53 +997,97 @@ export async function scrapeVolleyballData(
       }
     }
 
-    // Scrape match results if series ID is available
+    // Extract match results directly from the page if we're on a matches view
     let matchCount = 0;
-    if (scrapedData.seriesIds.length > 0) {
-      console.log(`Scraping match results for ${scrapedData.seriesIds.length} series...`);
+    if (url.includes('view=matches') && seriesId) {
+      console.log(`Extracting match results directly from page...`);
       
-      for (const seriesId of scrapedData.seriesIds) {
-        try {
-          const matchResults = await scrapeMatchResults(url, seriesId, league.id, storageInstance);
-          scrapedData.matches.push(...matchResults);
+      try {
+        // Look for match results in the current page HTML
+        $('tr').each((_, row) => {
+          const $row = $(row);
+          const resultSpan = $row.find('.samsMatchResultSetPoints');
           
-          // Store matches in database
-          for (const matchData of matchResults) {
-            try {
-              // Try to link team IDs based on team names
-              const homeTeam = teamDatabaseIds.find(t => {
-                const storedTeam = teams.find(team => team.teamId === t.teamId);
-                return storedTeam && (
-                  storedTeam.name.toLowerCase().includes(matchData.homeTeamName.toLowerCase()) ||
-                  matchData.homeTeamName.toLowerCase().includes(storedTeam.name.toLowerCase())
-                );
+          if (resultSpan.length > 0) {
+            const resultText = resultSpan.text().trim();
+            
+            if (resultText && resultText.includes(':')) {
+              const detailedSpan = $row.find('.samsMatchResultBallPoints');
+              const detailedText = detailedSpan.text().trim();
+              
+              // Extract team names from the same row
+              const teamNames: string[] = [];
+              $row.find('td').each((_, cell) => {
+                const $cell = $(cell);
+                
+                // Skip the result cell itself
+                if ($cell.hasClass('samsMatchResultTableCell')) {
+                  return;
+                }
+                
+                // Look for team name in preFormatted span or cell text
+                const teamName = $cell.find('.preFormatted').text().trim() || $cell.text().trim();
+                
+                // Valid team name: not empty, not a score, not a date, reasonable length
+                if (teamName && 
+                    !teamName.includes(':') && 
+                    !teamName.match(/^\d{1,2}\.\d{1,2}/) && 
+                    !teamName.match(/^\d{1,2}:\d{2}/) && 
+                    teamName.length > 3 && 
+                    teamName.length < 50) {
+                  teamNames.push(teamName);
+                }
               });
               
-              const awayTeam = teamDatabaseIds.find(t => {
-                const storedTeam = teams.find(team => team.teamId === t.teamId);
-                return storedTeam && (
-                  storedTeam.name.toLowerCase().includes(matchData.awayTeamName.toLowerCase()) ||
-                  matchData.awayTeamName.toLowerCase().includes(storedTeam.name.toLowerCase())
-                );
-              });
-              
-              if (homeTeam) matchData.homeTeamId = homeTeam.dbId;
-              if (awayTeam) matchData.awayTeamId = awayTeam.dbId;
-              
-              await storageInstance.createMatch(matchData);
-              matchCount++;
-              
-              // Update team statistics
-              if (homeTeam && awayTeam) {
-                await updateTeamStats(homeTeam.dbId, awayTeam.dbId, matchData, league.id, storageInstance);
+              if (teamNames.length >= 2) {
+                const homeTeam = teamNames[0];
+                const awayTeam = teamNames[teamNames.length - 1];
+                
+                let finalResult = resultText;
+                if (detailedText && detailedText.includes('(')) {
+                  const scoresMatch = detailedText.match(/\(([^)]+)\)/);
+                  if (scoresMatch) {
+                    finalResult = scoresMatch[1].replace(/\s+/g, ', ');
+                  }
+                }
+                
+                console.log(`Found volleyball match: ${homeTeam} vs ${awayTeam} - ${resultText} (detailed: ${finalResult})`);
+                const match = parseMatchResult(homeTeam, awayTeam, finalResult, '', seriesId, league.id);
+                
+                if (match) {
+                  // Try to link team IDs based on team names
+                  const homeDbTeam = teamDatabaseIds.find(t => {
+                    const storedTeam = teams.find(team => team.teamId === t.teamId);
+                    return storedTeam && (
+                      storedTeam.name.toLowerCase().includes(homeTeam.toLowerCase()) ||
+                      homeTeam.toLowerCase().includes(storedTeam.name.toLowerCase())
+                    );
+                  });
+                  
+                  const awayDbTeam = teamDatabaseIds.find(t => {
+                    const storedTeam = teams.find(team => team.teamId === t.teamId);
+                    return storedTeam && (
+                      storedTeam.name.toLowerCase().includes(awayTeam.toLowerCase()) ||
+                      awayTeam.toLowerCase().includes(storedTeam.name.toLowerCase())
+                    );
+                  });
+                  
+                  if (homeDbTeam) match.homeTeamId = homeDbTeam.dbId;
+                  if (awayDbTeam) match.awayTeamId = awayDbTeam.dbId;
+                  
+                  // Store match for later processing
+                  match.homeTeamId = homeDbTeam?.dbId || null;
+                  match.awayTeamId = awayDbTeam?.dbId || null;
+                  scrapedData.matches.push(match);
+                }
               }
-            } catch (error) {
-              console.error(`Failed to store match: ${matchData.homeTeamName} vs ${matchData.awayTeamName}`, error);
             }
           }
-        } catch (error) {
-          console.error(`Failed to scrape matches for series ${seriesId}:`, error);
-        }
+        });
+        
+        console.log(`Extracted ${matchCount} matches from page`);
+      } catch (error) {
+        console.error('Failed to extract matches from page:', error);
       }
       
       console.log(`Scraped ${matchCount} matches`);

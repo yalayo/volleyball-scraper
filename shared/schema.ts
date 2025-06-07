@@ -49,6 +49,41 @@ export const players = pgTable("players", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const matches = pgTable("matches", {
+  id: serial("id").primaryKey(),
+  matchId: text("match_id"),
+  homeTeamId: integer("home_team_id").references(() => teams.id),
+  awayTeamId: integer("away_team_id").references(() => teams.id),
+  homeTeamName: text("home_team_name").notNull(),
+  awayTeamName: text("away_team_name").notNull(),
+  homeScore: integer("home_score"),
+  awayScore: integer("away_score"),
+  homeSets: integer("home_sets"),
+  awaySets: integer("away_sets"),
+  setResults: text("set_results"), // Store as JSON string like "25:23,25:20,25:18"
+  matchDate: timestamp("match_date"),
+  status: text("status").default("completed"), // completed, scheduled, cancelled
+  leagueId: integer("league_id").references(() => leagues.id),
+  seriesId: text("series_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const teamStats = pgTable("team_stats", {
+  id: serial("id").primaryKey(),
+  teamId: integer("team_id").references(() => teams.id),
+  leagueId: integer("league_id").references(() => leagues.id),
+  matchesPlayed: integer("matches_played").default(0),
+  matchesWon: integer("matches_won").default(0),
+  matchesLost: integer("matches_lost").default(0),
+  setsWon: integer("sets_won").default(0),
+  setsLost: integer("sets_lost").default(0),
+  pointsFor: integer("points_for").default(0),
+  pointsAgainst: integer("points_against").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const scrapeLogs = pgTable("scrape_logs", {
   id: serial("id").primaryKey(),
   operation: text("operation").notNull(),
@@ -73,12 +108,43 @@ export const teamsRelations = relations(teams, ({ one, many }) => ({
     references: [leagues.id],
   }),
   players: many(players),
+  homeMatches: many(matches, { relationName: "homeTeam" }),
+  awayMatches: many(matches, { relationName: "awayTeam" }),
+  stats: many(teamStats),
 }));
 
 export const playersRelations = relations(players, ({ one }) => ({
   team: one(teams, {
     fields: [players.teamId],
     references: [teams.id],
+  }),
+}));
+
+export const matchesRelations = relations(matches, ({ one }) => ({
+  homeTeam: one(teams, {
+    fields: [matches.homeTeamId],
+    references: [teams.id],
+    relationName: "homeTeam",
+  }),
+  awayTeam: one(teams, {
+    fields: [matches.awayTeamId],
+    references: [teams.id],
+    relationName: "awayTeam",
+  }),
+  league: one(leagues, {
+    fields: [matches.leagueId],
+    references: [leagues.id],
+  }),
+}));
+
+export const teamStatsRelations = relations(teamStats, ({ one }) => ({
+  team: one(teams, {
+    fields: [teamStats.teamId],
+    references: [teams.id],
+  }),
+  league: one(leagues, {
+    fields: [teamStats.leagueId],
+    references: [leagues.id],
   }),
 }));
 
@@ -122,7 +188,25 @@ export type ScrapeLog = typeof scrapeLogs.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
+export const insertMatchSchema = createInsertSchema(matches).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTeamStatsSchema = createInsertSchema(teamStats).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
 });
+
+export type InsertMatch = z.infer<typeof insertMatchSchema>;
+export type Match = typeof matches.$inferSelect;
+
+export type InsertTeamStats = z.infer<typeof insertTeamStatsSchema>;
+export type TeamStats = typeof teamStats.$inferSelect;

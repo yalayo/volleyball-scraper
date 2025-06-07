@@ -168,9 +168,9 @@ async function scrapeTeamPlayers(
             foundPlayerIds.add(teamMemberId);
             
             // Extract data based on column mapping
-            let position = null;
-            let jerseyNumber = null;
-            let nationality = null;
+            let position: string | null = null;
+            let jerseyNumber: string | null = null;
+            let nationality: string | null = null;
             
             // Use column mapping if available
             if (columnMap.has('jersey') && cells.eq(columnMap.get('jersey')!)) {
@@ -182,30 +182,32 @@ async function scrapeTeamPlayers(
             
             if (columnMap.has('position') && cells.eq(columnMap.get('position')!)) {
               const posText = cells.eq(columnMap.get('position')!).text().trim();
-              if (isValidPosition(posText)) {
+              if (posText && posText !== '-' && posText !== '') {
                 position = posText;
               }
             }
             
             if (columnMap.has('nationality') && cells.eq(columnMap.get('nationality')!)) {
-              nationality = cells.eq(columnMap.get('nationality')!).text().trim();
+              const natText = cells.eq(columnMap.get('nationality')!).text().trim();
+              if (natText && natText !== '-' && natText !== '') {
+                nationality = natText;
+              }
             }
             
             // Fallback: scan all cells if column mapping didn't work
-            if (!jerseyNumber || !position) {
+            if (!jerseyNumber) {
               cells.each((_, cell) => {
                 const cellText = $(cell).text().trim();
                 if (!jerseyNumber && /^\d+$/.test(cellText) && parseInt(cellText) < 100) {
                   jerseyNumber = cellText;
-                } else if (!position && isValidPosition(cellText)) {
-                  position = cellText;
                 }
               });
             }
             
             players.push({
               name: playerName,
-              position: position || nationality || null, // Use nationality as position fallback
+              position: position || null, // Keep position separate from nationality
+              nationality: nationality || null,
               jerseyNumber: jerseyNumber || null,
               teamId: teamDbId,
               playerId: teamMemberId,
@@ -234,8 +236,9 @@ async function scrapeTeamPlayers(
           
           // Try to find additional info from parent elements
           const $parent = $link.closest('tr, li, div');
-          let position = null;
-          let jerseyNumber = null;
+          let position: string | null = null;
+          let jerseyNumber: string | null = null;
+          let nationality: string | null = null;
           
           $parent.find('*').each((_, element) => {
             const text = $(element).text().trim();
@@ -249,6 +252,7 @@ async function scrapeTeamPlayers(
           players.push({
             name: playerName,
             position: position || null,
+            nationality: nationality || null,
             jerseyNumber: jerseyNumber || null,
             teamId: teamDbId,
             playerId: teamMemberId,
@@ -296,6 +300,7 @@ async function scrapeTeamPlayers(
                 players.push({
                   name: playerName,
                   position: isValidPosition(position) ? position : null,
+                  nationality: null,
                   jerseyNumber: /^\d+$/.test(jerseyNumber) ? jerseyNumber : null,
                   teamId: teamDbId,
                   playerId: null,
@@ -351,6 +356,7 @@ async function scrapeTeamPlayers(
                 players.push({
                   name: cellText,
                   position: position || null,
+                  nationality: null,
                   jerseyNumber: jerseyNumber || null,
                   teamId: teamDbId,
                   playerId: null,

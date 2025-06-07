@@ -40,6 +40,7 @@ export const players = pgTable("players", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   position: text("position"),
+  nationality: text("nationality"),
   jerseyNumber: text("jersey_number"),
   playerId: text("player_id"), // Store teamMemberId from volleyball website
   teamId: integer("team_id").references(() => teams.id),

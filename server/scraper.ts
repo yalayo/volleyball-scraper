@@ -1000,10 +1000,37 @@ export async function scrapeVolleyballData(
     // Scrape match results if we have a series ID
     if (seriesId) {
       console.log(`Scraping match results for series ${seriesId}...`);
-      const matchesUrl = url.replace(/LeaguePresenter\.view=[^&]*/, 'LeaguePresenter.view=matches');
-      const matches = await scrapeMatchResults(matchesUrl, seriesId, league.id, storageInstance);
-      scrapedData.matches.push(...matches);
-      console.log(`Found ${matches.length} matches for series ${seriesId}`);
+      
+      // Try different match view URLs to ensure we get all matches
+      const matchUrls = [
+        url.replace(/LeaguePresenter\.view=[^&]*/, 'LeaguePresenter.view=matches'),
+        url.includes('view=matches') ? url : `${url}&LeaguePresenter.view=matches&playingScheduleMode=full`,
+        `${url.split('?')[0]}?LeaguePresenter.matchSeriesId=${seriesId}&LeaguePresenter.view=matches&playingScheduleMode=full`
+      ];
+      
+      let allMatches: InsertMatch[] = [];
+      for (const matchUrl of matchUrls) {
+        try {
+          const matches = await scrapeMatchResults(matchUrl, seriesId, league.id, storageInstance);
+          // Avoid duplicates by checking if match already exists
+          for (const match of matches) {
+            const exists = allMatches.find(m => 
+              m.homeTeamName === match.homeTeamName && 
+              m.awayTeamName === match.awayTeamName &&
+              m.homeSets === match.homeSets &&
+              m.awaySets === match.awaySets
+            );
+            if (!exists) {
+              allMatches.push(match);
+            }
+          }
+        } catch (error) {
+          console.log(`Failed to scrape from ${matchUrl}, trying next URL...`);
+        }
+      }
+      
+      scrapedData.matches.push(...allMatches);
+      console.log(`Found ${allMatches.length} matches for series ${seriesId}`);
     }
 
     // Store extracted matches in database and update team statistics

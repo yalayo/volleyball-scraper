@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { scrapeVolleyballData } from "./scraper";
-import { insertLeagueSchema, insertTeamSchema } from "@shared/schema";
+import { insertLeagueSchema, insertTeamSchema, insertPlayerSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -96,6 +96,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching teams:", error);
       res.status(500).json({ message: "Failed to fetch teams" });
+    }
+  });
+
+  // Players endpoints
+  app.get("/api/players", async (req, res) => {
+    try {
+      const players = await storage.getPlayers();
+      res.json(players);
+    } catch (error) {
+      console.error("Error fetching players:", error);
+      res.status(500).json({ message: "Failed to fetch players" });
+    }
+  });
+
+  app.get("/api/teams/:teamId/players", async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const players = await storage.getPlayersByTeam(teamId);
+      res.json(players);
+    } catch (error) {
+      console.error("Error fetching team players:", error);
+      res.status(500).json({ message: "Failed to fetch team players" });
+    }
+  });
+
+  app.post("/api/players", async (req, res) => {
+    try {
+      const validatedData = insertPlayerSchema.parse(req.body);
+      const player = await storage.createPlayer(validatedData);
+      res.status(201).json(player);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating player:", error);
+      res.status(500).json({ message: "Failed to create player" });
     }
   });
 

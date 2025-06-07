@@ -39,6 +39,7 @@ export interface IStorage {
   getStats(): Promise<{
     totalLeagues: number;
     totalTeams: number;
+    totalPlayers: number;
     totalSeries: number;
     lastScrapeTime: string | null;
   }>;
@@ -283,6 +284,7 @@ export class DatabaseStorage implements IStorage {
   async getStats(): Promise<{
     totalLeagues: number;
     totalTeams: number;
+    totalPlayers: number;
     totalSeries: number;
     lastScrapeTime: string | null;
   }> {
@@ -295,6 +297,11 @@ export class DatabaseStorage implements IStorage {
       .select({ count: count() })
       .from(teams)
       .where(eq(teams.isActive, true));
+
+    const [playerCount] = await db
+      .select({ count: count() })
+      .from(players)
+      .where(eq(players.isActive, true));
 
     const [seriesCount] = await db
       .select({ count: count(leagues.seriesId) })
@@ -311,6 +318,7 @@ export class DatabaseStorage implements IStorage {
     return {
       totalLeagues: leagueCount.count,
       totalTeams: teamCount.count,
+      totalPlayers: playerCount.count,
       totalSeries: seriesCount.count,
       lastScrapeTime: lastScrape?.createdAt?.toISOString() || null,
     };

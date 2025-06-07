@@ -23,11 +23,12 @@ import {
   RotateCcw
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import type { League, Team, ScrapeLog } from "@shared/schema";
+import type { League, Team, Player, ScrapeLog } from "@shared/schema";
 
 interface Stats {
   totalLeagues: number;
   totalTeams: number;
+  totalPlayers: number;
   totalSeries: number;
   lastScrapeTime: string | null;
 }
@@ -47,6 +48,10 @@ export default function Dashboard() {
     queryKey: ["/api/teams"],
   });
 
+  const { data: players = [], isLoading: playersLoading, refetch: refetchPlayers } = useQuery<(Player & { team?: Team })[]>({
+    queryKey: ["/api/players"],
+  });
+
   const { data: logs = [], isLoading: logsLoading } = useQuery<ScrapeLog[]>({
     queryKey: ["/api/scrape-logs"],
   });
@@ -58,6 +63,7 @@ export default function Dashboard() {
   const handleRefreshData = () => {
     refetchLeagues();
     refetchTeams();
+    refetchPlayers();
   };
 
   const getStatusBadge = (status: string) => {
@@ -205,7 +211,7 @@ export default function Dashboard() {
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
           <div className="p-6">
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
               <StatsCard
                 title="Total Leagues"
                 value={statsLoading ? "..." : stats?.totalLeagues.toString() || "0"}
@@ -216,6 +222,12 @@ export default function Dashboard() {
                 title="Total Teams"
                 value={statsLoading ? "..." : stats?.totalTeams.toString() || "0"}
                 icon={<Users className="w-5 h-5 text-green-600" />}
+                loading={statsLoading}
+              />
+              <StatsCard
+                title="Total Players"
+                value={statsLoading ? "..." : stats?.totalPlayers.toString() || "0"}
+                icon={<Users className="w-5 h-5 text-orange-600" />}
                 loading={statsLoading}
               />
               <StatsCard

@@ -20,7 +20,9 @@ import {
   AlertTriangle,
   XCircle,
   Eye,
-  RotateCcw
+  RotateCcw,
+  ExternalLink,
+  UserIcon
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { League, Team, Player, ScrapeLog } from "@shared/schema";
@@ -140,9 +142,14 @@ export default function Dashboard() {
       key: "name",
       header: "Team Name",
       render: (team: Team & { league?: League }) => (
-        <div>
-          <div className="font-medium text-gray-900">{team.name}</div>
-          {team.location && <div className="text-sm text-gray-500">{team.location}</div>}
+        <div className="flex items-center space-x-3">
+          {team.logoUrl && (
+            <img src={team.logoUrl} alt={`${team.name} logo`} className="w-8 h-8 rounded object-cover" />
+          )}
+          <div>
+            <div className="font-medium text-gray-900">{team.name}</div>
+            {team.location && <div className="text-sm text-gray-500">{team.location}</div>}
+          </div>
         </div>
       ),
     },
@@ -153,6 +160,24 @@ export default function Dashboard() {
         team.league ? team.league.name : "-",
     },
     {
+      key: "homepage",
+      header: "Homepage",
+      render: (team: Team) => 
+        team.homepage ? (
+          <a 
+            href={team.homepage} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center space-x-1 text-blue-600 hover:text-blue-800"
+          >
+            <ExternalLink className="w-4 h-4" />
+            <span className="text-sm">Visit</span>
+          </a>
+        ) : (
+          <span className="text-gray-400">-</span>
+        ),
+    },
+    {
       key: "teamId",
       header: "Team ID",
       render: (team: Team) => (
@@ -160,11 +185,58 @@ export default function Dashboard() {
       ),
     },
     {
-      key: "samsId",
-      header: "SAMS ID",
+      key: "players",
+      header: "Players",
+      render: (team: Team) => {
+        const teamPlayers = players.filter(p => p.teamId === team.id);
+        return (
+          <div className="flex items-center space-x-1">
+            <UserIcon className="w-4 h-4 text-gray-500" />
+            <span className="text-sm font-medium">{teamPlayers.length}</span>
+          </div>
+        );
+      },
+    },
+    {
+      key: "updatedAt",
+      header: "Last Updated",
       render: (team: Team) => 
-        team.samsId ? (
-          <code className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">{team.samsId}</code>
+        team.updatedAt ? formatDistanceToNow(new Date(team.updatedAt), { addSuffix: true }) : "-",
+    },
+  ];
+
+  const playerColumns = [
+    {
+      key: "name",
+      header: "Player Name",
+      render: (player: Player & { team?: Team }) => (
+        <div className="font-medium text-gray-900">{player.name}</div>
+      ),
+    },
+    {
+      key: "team",
+      header: "Team",
+      render: (player: Player & { team?: Team }) => 
+        player.team ? player.team.name : "-",
+    },
+    {
+      key: "position",
+      header: "Position",
+      render: (player: Player) => 
+        player.position ? (
+          <Badge variant="secondary">{player.position}</Badge>
+        ) : (
+          <span className="text-gray-400">-</span>
+        ),
+    },
+    {
+      key: "jerseyNumber",
+      header: "Jersey #",
+      render: (player: Player) => 
+        player.jerseyNumber ? (
+          <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-800 rounded-full text-sm font-bold">
+            {player.jerseyNumber}
+          </div>
         ) : (
           <span className="text-gray-400">-</span>
         ),
@@ -172,8 +244,8 @@ export default function Dashboard() {
     {
       key: "updatedAt",
       header: "Last Updated",
-      render: (team: Team) => 
-        team.updatedAt ? formatDistanceToNow(new Date(team.updatedAt), { addSuffix: true }) : "-",
+      render: (player: Player) => 
+        player.updatedAt ? formatDistanceToNow(new Date(player.updatedAt), { addSuffix: true }) : "-",
     },
   ];
 
@@ -277,6 +349,7 @@ export default function Dashboard() {
               <TabsList>
                 <TabsTrigger value="leagues">Leagues</TabsTrigger>
                 <TabsTrigger value="teams">Teams</TabsTrigger>
+                <TabsTrigger value="players">Players</TabsTrigger>
                 <TabsTrigger value="logs">Scrape Logs</TabsTrigger>
               </TabsList>
 
@@ -305,6 +378,21 @@ export default function Dashboard() {
                       data={teams} 
                       columns={teamColumns}
                       loading={teamsLoading}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="players">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Players Overview</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <DataTable 
+                      data={players} 
+                      columns={playerColumns}
+                      loading={playersLoading}
                     />
                   </CardContent>
                 </Card>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -83,6 +83,9 @@ export default function ScrapingModal({ open, onOpenChange }: ScrapingModalProps
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Configure Scraping Operation</DialogTitle>
+          <DialogDescription>
+            Set up automated data extraction from volleyball league websites to collect team information, player rosters, and match data.
+          </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -137,17 +140,17 @@ export default function ScrapingModal({ open, onOpenChange }: ScrapingModalProps
                 <Checkbox
                   id="teams"
                   checked={extractTeams}
-                  onCheckedChange={setExtractTeams}
+                  onCheckedChange={(checked) => setExtractTeams(checked === true)}
                 />
                 <label htmlFor="teams" className="text-sm">
-                  Team IDs (LeaguePresenter.teamListView.teamId)
+                  Team Information (Names, IDs, Homepages, Logos)
                 </label>
               </div>
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="series"
                   checked={extractSeries}
-                  onCheckedChange={setExtractSeries}
+                  onCheckedChange={(checked) => setExtractSeries(checked === true)}
                 />
                 <label htmlFor="series" className="text-sm">
                   Series IDs (LeaguePresenter.matchSeriesId)
@@ -157,10 +160,10 @@ export default function ScrapingModal({ open, onOpenChange }: ScrapingModalProps
                 <Checkbox
                   id="sams"
                   checked={extractSams}
-                  onCheckedChange={setExtractSams}
+                  onCheckedChange={(checked) => setExtractSams(checked === true)}
                 />
                 <label htmlFor="sams" className="text-sm">
-                  SAMS IDs (samsCmsComponent_*)
+                  Player Rosters (from team detail pages)
                 </label>
               </div>
             </div>

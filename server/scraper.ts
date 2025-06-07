@@ -194,11 +194,13 @@ async function scrapeTeamPlayers(
               const toolTipContent = natCell.find('span.toolTipContent').text().trim();
               if (toolTipContent) {
                 // Extract nationality code from patterns like "Deutschland (GER)" or just "GER"
-                const natMatch = toolTipContent.match(/\(([A-Z]{2,3})\)/) || toolTipContent.match(/^([A-Z]{2,3})$/);
+                const natMatch = toolTipContent.match(/\(([A-Z]{2,3})\)/);
                 if (natMatch) {
-                  nationality = natMatch[1];
+                  nationality = natMatch[1]; // Extract just the code like "GER"
+                } else if (/^[A-Z]{2,3}$/.test(toolTipContent)) {
+                  nationality = toolTipContent; // Already a code like "GER"
                 } else {
-                  nationality = toolTipContent;
+                  nationality = toolTipContent; // Fallback to full text
                 }
               } else {
                 // Fallback to cell text

@@ -459,21 +459,62 @@ async function scrapeMatchResults(
 
     const $ = cheerio.load(response.data);
 
-    // Look for match results in datatable structure
-    $('tr.ui-widget-content').each((_, row) => {
+    // Look for match results in volleyball table structure
+    $('tr').each((_, row) => {
       const $row = $(row);
-      const cells = $row.find('td');
+      const resultSpan = $row.find('.samsMatchResultSetPoints');
       
-      if (cells.length >= 6) {
-        // Extract team names and match results
-        const homeTeamName = $(cells.eq(1)).text().trim();
-        const awayTeamName = $(cells.eq(3)).text().trim();
-        const resultText = $(cells.eq(2)).text().trim(); // Usually contains score like "3:1" or "25:23, 25:20, 20:25, 25:18"
-        const dateText = $(cells.eq(0)).text().trim();
+      if (resultSpan.length > 0) {
+        const resultText = resultSpan.text().trim();
+        const detailedSpan = $row.find('.samsMatchResultBallPoints');
+        const detailedText = detailedSpan.text().trim();
+        
+        // Extract team names from row - look for team names in cells
+        const cells = $row.find('td');
+        let homeTeamName = '';
+        let awayTeamName = '';
+        let dateText = '';
+        
+        // Find team names by looking for cells with team names (not containing scores or dates)
+        cells.each((index, cell) => {
+          const cellText = $(cell).text().trim();
+          
+          // Skip cells with scores, dates, or empty content
+          if (!cellText || cellText.includes(':') || cellText.match(/^\d{1,2}\.\d{1,2}/)) {
+            return;
+          }
+          
+          // Skip cells that are likely time/date
+          if (cellText.match(/^\d{1,2}:\d{2}/) || cellText.length < 3) {
+            return;
+          }
+          
+          // Extract date if found
+          if (cellText.match(/\d{1,2}\.\d{1,2}\.\d{4}/)) {
+            dateText = cellText;
+            return;
+          }
+          
+          // Assign team names based on position
+          if (!homeTeamName) {
+            homeTeamName = cellText;
+          } else if (!awayTeamName && cellText !== homeTeamName) {
+            awayTeamName = cellText;
+          }
+        });
+
+        // Get detailed set scores if available
+        let finalResultText = resultText;
+        if (detailedText && detailedText.includes('(') && detailedText.includes(')')) {
+          const scoresMatch = detailedText.match(/\(([^)]+)\)/);
+          if (scoresMatch) {
+            finalResultText = scoresMatch[1].replace(/\s+/g, ', ');
+          }
+        }
 
         if (homeTeamName && awayTeamName && resultText && resultText.includes(':')) {
-          // Parse match result
-          const match = parseMatchResult(homeTeamName, awayTeamName, resultText, dateText, seriesId, leagueDbId);
+          console.log(`Found volleyball match: ${homeTeamName} vs ${awayTeamName} - ${resultText} (detailed: ${finalResultText})`);
+          const match = parseMatchResult(homeTeamName, awayTeamName, finalResultText, dateText, seriesId, leagueDbId);
           if (match) {
             matches.push(match);
           }
@@ -481,24 +522,47 @@ async function scrapeMatchResults(
       }
     });
 
-    // Also look for results in other table structures
-    $('.ui-datatable tbody tr').each((_, row) => {
-      const $row = $(row);
-      const cells = $row.find('td');
-      
-      if (cells.length >= 4) {
-        const homeTeam = $(cells.eq(0)).text().trim();
-        const result = $(cells.eq(1)).text().trim();
-        const awayTeam = $(cells.eq(2)).text().trim();
-        const date = $(cells.eq(3)).text().trim();
-
-        if (homeTeam && awayTeam && result && result.includes(':')) {
-          const match = parseMatchResult(homeTeam, awayTeam, result, date, seriesId, leagueDbId);
-          if (match) {
-            matches.push(match);
+    // Alternative parsing for different table structures
+    $('table').each((_, table) => {
+      const $table = $(table);
+      $table.find('tr').each((_, row) => {
+        const $row = $(row);
+        const resultSpan = $row.find('.samsMatchResultSetPoints');
+        
+        if (resultSpan.length > 0) {
+          const resultText = resultSpan.text().trim();
+          const detailedSpan = $row.find('.samsMatchResultBallPoints');
+          const detailedText = detailedSpan.text().trim();
+          
+          // Extract team names from adjacent cells
+          const cells = $row.find('td');
+          const teamCells = cells.filter((_, cell) => {
+            const text = $(cell).text().trim();
+            return text && !text.includes(':') && !text.match(/^\d{1,2}\.\d{1,2}/) && text.length > 2;
+          });
+          
+          if (teamCells.length >= 2) {
+            const homeTeam = $(teamCells[0]).text().trim();
+            const awayTeam = $(teamCells[teamCells.length - 1]).text().trim();
+            
+            let finalResult = resultText;
+            if (detailedText && detailedText.includes('(')) {
+              const scoresMatch = detailedText.match(/\(([^)]+)\)/);
+              if (scoresMatch) {
+                finalResult = scoresMatch[1].replace(/\s+/g, ', ');
+              }
+            }
+            
+            if (homeTeam && awayTeam && resultText.includes(':')) {
+              console.log(`Alternative parsing - Found match: ${homeTeam} vs ${awayTeam} - ${finalResult}`);
+              const match = parseMatchResult(homeTeam, awayTeam, finalResult, '', seriesId, leagueDbId);
+              if (match) {
+                matches.push(match);
+              }
+            }
           }
         }
-      }
+      });
     });
 
     console.log(`Found ${matches.length} matches for series ${seriesId}`);

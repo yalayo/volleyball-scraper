@@ -5,6 +5,8 @@ import StatsCard from "@/components/ui/stats-card";
 import DataTable from "@/components/ui/data-table";
 import ScrapingModal from "@/components/ui/scraping-modal";
 import TeamPlayersModal from "@/components/ui/team-players-modal";
+import MatchDetailsModal from "@/components/ui/match-details-modal";
+import TeamGamesModal from "@/components/ui/team-games-modal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -302,7 +304,7 @@ export default function Dashboard() {
             {match.homeTeam?.name || match.homeTeamName} vs {match.awayTeam?.name || match.awayTeamName}
           </div>
           <div className="text-sm text-gray-500">
-            {match.league?.name || `League ${match.leagueId}`}
+            {match.leagueId ? `League ${match.leagueId}` : "Unknown League"}
           </div>
         </div>
       ),

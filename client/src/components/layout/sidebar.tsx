@@ -74,6 +74,15 @@ export default function Sidebar({ onStartScraping, activeTab, onTabChange }: Sid
               Players
             </Button>
             <Button
+              variant={activeTab === "games" ? "default" : "ghost"}
+              className={`w-full justify-start ${activeTab === "games" ? "" : "text-gray-700 hover:bg-gray-100"}`}
+              size="sm"
+              onClick={() => onTabChange("games")}
+            >
+              <Bot className="w-4 h-4 mr-3" />
+              Games
+            </Button>
+            <Button
               variant={activeTab === "logs" ? "default" : "ghost"}
               className={`w-full justify-start ${activeTab === "logs" ? "" : "text-gray-700 hover:bg-gray-100"}`}
               size="sm"

@@ -121,6 +121,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/teams/:teamId/matches", async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const matches = await storage.getMatches();
+      // Filter matches where the team is either home or away
+      const teamMatches = matches.filter(match => 
+        match.homeTeamId === teamId || match.awayTeamId === teamId
+      );
+      res.json(teamMatches);
+    } catch (error) {
+      console.error("Error fetching team matches:", error);
+      res.status(500).json({ message: "Failed to fetch team matches" });
+    }
+  });
+
   app.post("/api/players", async (req, res) => {
     try {
       const validatedData = insertPlayerSchema.parse(req.body);

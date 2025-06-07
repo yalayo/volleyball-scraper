@@ -1,4 +1,4 @@
-import { users, leagues, teams, scrapeLogs, type User, type InsertUser, type League, type InsertLeague, type Team, type InsertTeam, type ScrapeLog, type InsertScrapeLog } from "@shared/schema";
+import { users, leagues, teams, players, scrapeLogs, type User, type InsertUser, type League, type InsertLeague, type Team, type InsertTeam, type Player, type InsertPlayer, type ScrapeLog, type InsertScrapeLog } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, count, sql } from "drizzle-orm";
 
@@ -22,6 +22,14 @@ export interface IStorage {
   createTeam(team: InsertTeam): Promise<Team>;
   updateTeam(id: number, team: Partial<InsertTeam>): Promise<Team | undefined>;
   deleteTeam(id: number): Promise<boolean>;
+
+  // Player methods
+  getPlayers(): Promise<(Player & { team?: Team })[]>;
+  getPlayersByTeam(teamId: number): Promise<Player[]>;
+  getPlayer(id: number): Promise<Player | undefined>;
+  createPlayer(player: InsertPlayer): Promise<Player>;
+  updatePlayer(id: number, player: Partial<InsertPlayer>): Promise<Player | undefined>;
+  deletePlayer(id: number): Promise<boolean>;
 
   // Scrape log methods
   getScrapeLogsPaginated(offset: number, limit: number): Promise<ScrapeLog[]>;
@@ -100,6 +108,8 @@ export class DatabaseStorage implements IStorage {
         location: teams.location,
         teamId: teams.teamId,
         samsId: teams.samsId,
+        homepage: teams.homepage,
+        logoUrl: teams.logoUrl,
         leagueId: teams.leagueId,
         isActive: teams.isActive,
         createdAt: teams.createdAt,
@@ -127,11 +137,13 @@ export class DatabaseStorage implements IStorage {
       location: row.location,
       teamId: row.teamId,
       samsId: row.samsId,
+      homepage: row.homepage,
+      logoUrl: row.logoUrl,
       leagueId: row.leagueId,
       isActive: row.isActive,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
-      league: row.league.id ? row.league : undefined,
+      league: row.league && row.league.id ? row.league : undefined,
     }));
   }
 
@@ -169,7 +181,86 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTeam(id: number): Promise<boolean> {
     const result = await db.delete(teams).where(eq(teams.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
+  }
+
+  async getPlayers(): Promise<(Player & { team?: Team })[]> {
+    const result = await db
+      .select({
+        id: players.id,
+        name: players.name,
+        position: players.position,
+        jerseyNumber: players.jerseyNumber,
+        teamId: players.teamId,
+        isActive: players.isActive,
+        createdAt: players.createdAt,
+        updatedAt: players.updatedAt,
+        team: {
+          id: teams.id,
+          name: teams.name,
+          location: teams.location,
+          teamId: teams.teamId,
+          samsId: teams.samsId,
+          homepage: teams.homepage,
+          logoUrl: teams.logoUrl,
+          leagueId: teams.leagueId,
+          isActive: teams.isActive,
+          createdAt: teams.createdAt,
+          updatedAt: teams.updatedAt,
+        },
+      })
+      .from(players)
+      .leftJoin(teams, eq(players.teamId, teams.id))
+      .orderBy(desc(players.updatedAt));
+
+    return result.map(row => ({
+      id: row.id,
+      name: row.name,
+      position: row.position,
+      jerseyNumber: row.jerseyNumber,
+      teamId: row.teamId,
+      isActive: row.isActive,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      team: row.team && row.team.id ? row.team : undefined,
+    }));
+  }
+
+  async getPlayersByTeam(teamId: number): Promise<Player[]> {
+    return await db.select().from(players).where(eq(players.teamId, teamId));
+  }
+
+  async getPlayer(id: number): Promise<Player | undefined> {
+    const [player] = await db.select().from(players).where(eq(players.id, id));
+    return player || undefined;
+  }
+
+  async createPlayer(player: InsertPlayer): Promise<Player> {
+    const [newPlayer] = await db
+      .insert(players)
+      .values({
+        ...player,
+        updatedAt: new Date(),
+      })
+      .returning();
+    return newPlayer;
+  }
+
+  async updatePlayer(id: number, player: Partial<InsertPlayer>): Promise<Player | undefined> {
+    const [updatedPlayer] = await db
+      .update(players)
+      .set({
+        ...player,
+        updatedAt: new Date(),
+      })
+      .where(eq(players.id, id))
+      .returning();
+    return updatedPlayer || undefined;
+  }
+
+  async deletePlayer(id: number): Promise<boolean> {
+    const result = await db.delete(players).where(eq(players.id, id));
+    return (result.rowCount || 0) > 0;
   }
 
   async getScrapeLogsPaginated(offset: number, limit: number): Promise<ScrapeLog[]> {

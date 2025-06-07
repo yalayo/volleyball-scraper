@@ -28,7 +28,20 @@ export const teams = pgTable("teams", {
   location: text("location"),
   teamId: text("team_id").notNull(),
   samsId: text("sams_id"),
+  homepage: text("homepage"),
+  logoUrl: text("logo_url"),
   leagueId: integer("league_id").references(() => leagues.id),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const players = pgTable("players", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  position: text("position"),
+  jerseyNumber: text("jersey_number"),
+  teamId: integer("team_id").references(() => teams.id),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -52,10 +65,18 @@ export const leaguesRelations = relations(leagues, ({ many }) => ({
   teams: many(teams),
 }));
 
-export const teamsRelations = relations(teams, ({ one }) => ({
+export const teamsRelations = relations(teams, ({ one, many }) => ({
   league: one(leagues, {
     fields: [teams.leagueId],
     references: [leagues.id],
+  }),
+  players: many(players),
+}));
+
+export const playersRelations = relations(players, ({ one }) => ({
+  team: one(teams, {
+    fields: [players.teamId],
+    references: [teams.id],
   }),
 }));
 
@@ -72,6 +93,12 @@ export const insertTeamSchema = createInsertSchema(teams).omit({
   updatedAt: true,
 });
 
+export const insertPlayerSchema = createInsertSchema(players).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertScrapeLogSchema = createInsertSchema(scrapeLogs).omit({
   id: true,
   createdAt: true,
@@ -83,6 +110,9 @@ export type League = typeof leagues.$inferSelect;
 
 export type InsertTeam = z.infer<typeof insertTeamSchema>;
 export type Team = typeof teams.$inferSelect;
+
+export type InsertPlayer = z.infer<typeof insertPlayerSchema>;
+export type Player = typeof players.$inferSelect;
 
 export type InsertScrapeLog = z.infer<typeof insertScrapeLogSchema>;
 export type ScrapeLog = typeof scrapeLogs.$inferSelect;

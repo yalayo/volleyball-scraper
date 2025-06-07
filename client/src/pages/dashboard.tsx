@@ -233,6 +233,33 @@ export default function Dashboard() {
         ) : "-",
     },
     {
+      key: "games",
+      header: "Games",
+      render: (team: Team) => {
+        const teamMatches = matches.filter(match => 
+          match.homeTeamId === team.id || match.awayTeamId === team.id
+        );
+        return teamMatches.length > 0 ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setTeamGamesModal({
+              open: true,
+              teamId: team.id,
+              teamName: team.name
+            })}
+            className="h-6 px-2"
+          >
+            <Trophy className="w-3 h-3 mr-1" />
+            {teamMatches.length}
+          </Button>
+        ) : (
+          <span className="text-gray-400">0</span>
+        );
+      },
+      searchable: false,
+    },
+    {
       key: "updatedAt",
       header: "Last Updated",
       render: (team: Team) => 
@@ -615,7 +642,8 @@ export default function Dashboard() {
                   {activeTab === "dashboard" ? "Dashboard" : 
                    activeTab === "leagues" ? "Leagues" :
                    activeTab === "teams" ? "Teams" :
-                   activeTab === "players" ? "Players" : "Logs"}
+                   activeTab === "players" ? "Players" :
+                   activeTab === "games" ? "Games" : "Logs"}
                 </h2>
                 <p className="text-sm text-gray-600">
                   {activeTab === "dashboard" ? "Monitor and manage volleyball data scraping operations" :
@@ -659,6 +687,20 @@ export default function Dashboard() {
         onOpenChange={(open) => setTeamPlayersModal(prev => ({ ...prev, open }))}
         teamId={teamPlayersModal.teamId}
         teamName={teamPlayersModal.teamName}
+      />
+
+      <TeamGamesModal
+        open={teamGamesModal.open}
+        onClose={() => setTeamGamesModal(prev => ({ ...prev, open: false }))}
+        teamId={teamGamesModal.teamId}
+        teamName={teamGamesModal.teamName}
+        onViewMatch={(match) => setMatchDetailsModal({ open: true, match })}
+      />
+
+      <MatchDetailsModal
+        open={matchDetailsModal.open}
+        onClose={() => setMatchDetailsModal({ open: false, match: null })}
+        match={matchDetailsModal.match}
       />
     </div>
   );

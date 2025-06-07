@@ -26,12 +26,13 @@ import {
   UserIcon
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import type { League, Team, Player, ScrapeLog } from "@shared/schema";
+import type { League, Team, Player, ScrapeLog, Match } from "@shared/schema";
 
 interface Stats {
   totalLeagues: number;
   totalTeams: number;
   totalPlayers: number;
+  totalMatches: number;
   totalSeries: number;
   lastScrapeTime: string | null;
 }
@@ -44,6 +45,17 @@ export default function Dashboard() {
     teamId: number;
     teamName: string;
   }>({ open: false, teamId: 0, teamName: "" });
+  
+  const [teamGamesModal, setTeamGamesModal] = useState<{
+    open: boolean;
+    teamId: number;
+    teamName: string;
+  }>({ open: false, teamId: 0, teamName: "" });
+  
+  const [matchDetailsModal, setMatchDetailsModal] = useState<{
+    open: boolean;
+    match: Match | null;
+  }>({ open: false, match: null });
 
   const { data: stats, isLoading: statsLoading } = useQuery<Stats>({
     queryKey: ["/api/stats"],
@@ -61,6 +73,10 @@ export default function Dashboard() {
     queryKey: ["/api/players"],
   });
 
+  const { data: matches = [], isLoading: matchesLoading, refetch: refetchMatches } = useQuery<(Match & { homeTeam?: Team; awayTeam?: Team; league?: League })[]>({
+    queryKey: ["/api/matches"],
+  });
+
   const { data: scrapeLogs = [], isLoading: scrapeLogsLoading, refetch: refetchScrapeLogs } = useQuery<ScrapeLog[]>({
     queryKey: ["/api/scrape-logs"],
   });
@@ -73,6 +89,7 @@ export default function Dashboard() {
     refetchLeagues();
     refetchTeams();
     refetchPlayers();
+    refetchMatches();
     refetchScrapeLogs();
   };
 
@@ -275,6 +292,79 @@ export default function Dashboard() {
     },
   ];
 
+  const matchColumns = [
+    {
+      key: "teams",
+      header: "Match",
+      render: (match: Match & { homeTeam?: Team; awayTeam?: Team }) => (
+        <div className="space-y-1">
+          <div className="font-medium text-gray-900">
+            {match.homeTeam?.name || match.homeTeamName} vs {match.awayTeam?.name || match.awayTeamName}
+          </div>
+          <div className="text-sm text-gray-500">
+            {match.league?.name || `League ${match.leagueId}`}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "result",
+      header: "Result",
+      render: (match: Match) => (
+        <div className="space-y-1">
+          <div className="font-bold text-lg">
+            {match.homeSets || 0} : {match.awaySets || 0}
+          </div>
+          <div className="text-sm text-gray-500">
+            Sets ({match.homeScore || 0} : {match.awayScore || 0} pts)
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "details",
+      header: "Set Details",
+      render: (match: Match) => (
+        <div className="text-sm">
+          {match.setResults ? (
+            <code className="bg-gray-100 px-2 py-1 rounded text-xs">
+              {match.setResults}
+            </code>
+          ) : (
+            <span className="text-gray-400">-</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "date",
+      header: "Date",
+      render: (match: Match) => (
+        <div className="text-sm text-gray-600">
+          {match.matchDate || match.createdAt 
+            ? formatDistanceToNow(new Date(match.matchDate || match.createdAt!), { addSuffix: true })
+            : "-"
+          }
+        </div>
+      ),
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      render: (match: Match) => (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setMatchDetailsModal({ open: true, match })}
+        >
+          <Eye className="w-4 h-4 mr-1" />
+          View
+        </Button>
+      ),
+      searchable: false,
+    },
+  ];
+
   const logColumns = [
     {
       key: "operation",
@@ -397,6 +487,22 @@ export default function Dashboard() {
                       columns={playerColumns}
                       loading={playersLoading}
                       searchPlaceholder="Search players..."
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="games">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Games & Match Results</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <DataTable 
+                      data={matches} 
+                      columns={matchColumns}
+                      loading={matchesLoading}
+                      searchPlaceholder="Search matches..."
                     />
                   </CardContent>
                 </Card>

@@ -122,11 +122,13 @@ async function scrapeTeamPlayers(
 
     const $ = cheerio.load(response.data);
 
-    // Target specific volleyball website structure
+    // Target specific volleyball website structure for player extraction
     const foundPlayerIds = new Set<string>(); // Track duplicates by teamMemberId
     
-    // Look for player data in datatable rows with specific classes
-    $('tr.ui-widget-content.ui-datatable-odd, tr.ui-widget-content.ui-datatable-even, tr[class*="ui-widget-content"]').each((_, row) => {
+    console.log(`Scraping players for team ${teamId} from URL: ${teamUrl}`);
+    
+    // Method 1: Look for specific datatable structure with ui-widget-content classes
+    $('tr.ui-widget-content.ui-datatable-odd, tr.ui-widget-content.ui-datatable-even, tr[class*="ui-widget-content"][class*="ui-datatable"]').each((_, row) => {
       const $row = $(row);
       const cells = $row.find('td');
       
@@ -143,7 +145,7 @@ async function scrapeTeamPlayers(
           const memberIdMatch = href.match(/teamMemberId[=:](\d+)/);
           const teamMemberId = memberIdMatch ? memberIdMatch[1] : null;
           
-          if (playerName && teamMemberId && !foundPlayerIds.has(teamMemberId)) {
+          if (playerName && teamMemberId && isValidPlayerName(playerName) && !foundPlayerIds.has(teamMemberId)) {
             foundPlayerIds.add(teamMemberId);
             
             // Extract additional player info from the row
@@ -173,7 +175,9 @@ async function scrapeTeamPlayers(
       }
     });
 
-    // Fallback: Look for any links with teamMemberId if no datatable rows found
+    console.log(`Found ${players.length} players in datatable structure for team ${teamId}`);
+
+    // Method 2: Look for any links with teamMemberId parameter (broader search)
     if (players.length === 0) {
       $('a[href*="teamMemberId"]').each((_, link) => {
         const $link = $(link);
@@ -184,7 +188,7 @@ async function scrapeTeamPlayers(
         const memberIdMatch = href.match(/teamMemberId[=:](\d+)/);
         const teamMemberId = memberIdMatch ? memberIdMatch[1] : null;
         
-        if (playerName && teamMemberId && !foundPlayerIds.has(teamMemberId)) {
+        if (playerName && teamMemberId && isValidPlayerName(playerName) && !foundPlayerIds.has(teamMemberId)) {
           foundPlayerIds.add(teamMemberId);
           
           // Try to find additional info from parent elements
@@ -211,49 +215,113 @@ async function scrapeTeamPlayers(
           });
         }
       });
+      
+      console.log(`Found ${players.length} players with teamMemberId links for team ${teamId}`);
     }
 
-    // Additional fallback for general player tables if still no players found
+    // Method 3: Navigate to team detail page to get player roster
+    if (players.length === 0) {
+      try {
+        // Try to access team roster page directly
+        const rosterUrl = baseUrl.replace(
+          /(&LeaguePresenter\.view=.*)?$/,
+          `&LeaguePresenter.teamListView.view=teamRoster&LeaguePresenter.view=teamOverview&LeaguePresenter.teamListView.teamId=${teamId}`
+        );
+        
+        const rosterResponse = await axios.get(rosterUrl, {
+          timeout: 15000,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+          }
+        });
+
+        const $roster = cheerio.load(rosterResponse.data);
+        
+        // Look for player tables in roster page
+        $roster('table tr').each((_, row) => {
+          const $row = $roster(row);
+          const cells = $row.find('td');
+          
+          if (cells.length >= 2) {
+            const playerName = cells.eq(0).text().trim();
+            const jerseyNumber = cells.eq(1).text().trim();
+            const position = cells.length > 2 ? cells.eq(2).text().trim() : null;
+            
+            if (isValidPlayerName(playerName)) {
+              const playerKey = `${playerName}_${teamDbId}`;
+              if (!foundPlayerIds.has(playerKey)) {
+                foundPlayerIds.add(playerKey);
+                
+                players.push({
+                  name: playerName,
+                  position: isValidPosition(position) ? position : null,
+                  jerseyNumber: /^\d+$/.test(jerseyNumber) ? jerseyNumber : null,
+                  teamId: teamDbId,
+                  playerId: null,
+                  isActive: true
+                });
+              }
+            }
+          }
+        });
+        
+        console.log(`Found ${players.length} players from roster page for team ${teamId}`);
+        
+      } catch (error) {
+        console.log(`Could not access roster page for team ${teamId}:`, error.message);
+      }
+    }
+
+    // Method 4: Fallback to general table scanning with improved filtering
     if (players.length === 0) {
       $('table tr').each((_, row) => {
         const $row = $(row);
         const cells = $row.find('td');
         
-        if (cells.length >= 2) {
-          const firstCell = cells.eq(0).text().trim();
-          const secondCell = cells.eq(1).text().trim();
-          
-          // Check if first cell looks like a player name
-          if (isValidPlayerName(firstCell)) {
-            const playerKey = `${firstCell}_${teamDbId}`;
-            if (!foundPlayerIds.has(playerKey)) {
-              foundPlayerIds.add(playerKey);
-              
-              let jerseyNumber = null;
-              let position = null;
-              
-              // Try to extract jersey number and position from other cells
-              for (let i = 1; i < cells.length; i++) {
-                const cellText = cells.eq(i).text().trim();
-                if (/^\d+$/.test(cellText) && parseInt(cellText) < 100) {
-                  jerseyNumber = cellText;
-                } else if (isValidPosition(cellText)) {
-                  position = cellText;
+        if (cells.length >= 1) {
+          // Check each cell for potential player names
+          cells.each((i, cell) => {
+            const cellText = $(cell).text().trim();
+            
+            if (isValidPlayerName(cellText)) {
+              const playerKey = `${cellText}_${teamDbId}`;
+              if (!foundPlayerIds.has(playerKey)) {
+                foundPlayerIds.add(playerKey);
+                
+                let jerseyNumber = null;
+                let position = null;
+                
+                // Look for jersey number in adjacent cells
+                if (i > 0) {
+                  const prevText = cells.eq(i - 1).text().trim();
+                  if (/^\d+$/.test(prevText) && parseInt(prevText) < 100) {
+                    jerseyNumber = prevText;
+                  }
                 }
+                if (i < cells.length - 1) {
+                  const nextText = cells.eq(i + 1).text().trim();
+                  if (/^\d+$/.test(nextText) && parseInt(nextText) < 100) {
+                    jerseyNumber = nextText;
+                  } else if (isValidPosition(nextText)) {
+                    position = nextText;
+                  }
+                }
+                
+                players.push({
+                  name: cellText,
+                  position: position || null,
+                  jerseyNumber: jerseyNumber || null,
+                  teamId: teamDbId,
+                  playerId: null,
+                  isActive: true
+                });
               }
-              
-              players.push({
-                name: firstCell,
-                position: position || null,
-                jerseyNumber: jerseyNumber || null,
-                teamId: teamDbId,
-                playerId: null,
-                isActive: true
-              });
             }
-          }
+          });
         }
       });
+      
+      console.log(`Found ${players.length} players from general table scan for team ${teamId}`);
     }
 
     // Save players to database

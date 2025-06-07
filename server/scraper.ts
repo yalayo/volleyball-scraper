@@ -188,18 +188,55 @@ async function scrapeTeamPlayers(
             }
             
             if (columnMap.has('nationality') && cells.eq(columnMap.get('nationality')!)) {
-              const natText = cells.eq(columnMap.get('nationality')!).text().trim();
-              if (natText && natText !== '-' && natText !== '') {
-                nationality = natText;
+              const natCell = cells.eq(columnMap.get('nationality')!);
+              
+              // First try to extract from toolTipContent span
+              const toolTipContent = natCell.find('span.toolTipContent').text().trim();
+              if (toolTipContent) {
+                // Extract nationality code from patterns like "Deutschland (GER)" or just "GER"
+                const natMatch = toolTipContent.match(/\(([A-Z]{2,3})\)/) || toolTipContent.match(/^([A-Z]{2,3})$/);
+                if (natMatch) {
+                  nationality = natMatch[1];
+                } else {
+                  nationality = toolTipContent;
+                }
+              } else {
+                // Fallback to cell text
+                const natText = natCell.text().trim();
+                if (natText && natText !== '-' && natText !== '') {
+                  nationality = natText;
+                }
               }
             }
             
             // Fallback: scan all cells if column mapping didn't work
-            if (!jerseyNumber) {
+            if (!jerseyNumber || !nationality) {
               cells.each((_, cell) => {
-                const cellText = $(cell).text().trim();
+                const $cell = $(cell);
+                const cellText = $cell.text().trim();
+                
+                // Look for jersey number
                 if (!jerseyNumber && /^\d+$/.test(cellText) && parseInt(cellText) < 100) {
                   jerseyNumber = cellText;
+                }
+                
+                // Look for nationality in tooltip content
+                if (!nationality) {
+                  const toolTipContent = $cell.find('span.toolTipContent').text().trim();
+                  if (toolTipContent) {
+                    // Extract nationality code from patterns like "Deutschland (GER)" or just "GER"
+                    const natMatch = toolTipContent.match(/\(([A-Z]{2,3})\)/) || toolTipContent.match(/^([A-Z]{2,3})$/);
+                    if (natMatch) {
+                      nationality = natMatch[1];
+                    } else if (toolTipContent.length <= 10) { // Reasonable nationality length
+                      nationality = toolTipContent;
+                    }
+                  }
+                  
+                  // Also check for standalone nationality codes in cell text
+                  if (!nationality && /^[A-Z]{2,3}$/.test(cellText)) {
+                    nationality = cellText;
+                  }
                 }
               });
             }

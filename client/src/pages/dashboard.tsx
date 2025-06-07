@@ -421,6 +421,7 @@ export default function Dashboard() {
                 data={leagues} 
                 columns={leagueColumns}
                 loading={leaguesLoading}
+                searchPlaceholder="Search leagues..."
               />
             </CardContent>
           </Card>
@@ -436,6 +437,7 @@ export default function Dashboard() {
                 data={teams} 
                 columns={teamColumns}
                 loading={teamsLoading}
+                searchPlaceholder="Search teams..."
               />
             </CardContent>
           </Card>
@@ -451,6 +453,7 @@ export default function Dashboard() {
                 data={players} 
                 columns={playerColumns}
                 loading={playersLoading}
+                searchPlaceholder="Search players..."
               />
             </CardContent>
           </Card>
@@ -466,6 +469,7 @@ export default function Dashboard() {
                 data={scrapeLogs} 
                 columns={logColumns}
                 loading={scrapeLogsLoading}
+                searchPlaceholder="Search logs..."
               />
             </CardContent>
           </Card>
@@ -530,6 +534,13 @@ export default function Dashboard() {
       <ScrapingModal 
         open={showScrapingModal} 
         onOpenChange={setShowScrapingModal}
+      />
+      
+      <TeamPlayersModal
+        open={teamPlayersModal.open}
+        onOpenChange={(open) => setTeamPlayersModal(prev => ({ ...prev, open }))}
+        teamId={teamPlayersModal.teamId}
+        teamName={teamPlayersModal.teamName}
       />
     </div>
   );

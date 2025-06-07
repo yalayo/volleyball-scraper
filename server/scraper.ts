@@ -226,12 +226,12 @@ async function scrapeTeamPlayers(
                 if (!nationality) {
                   const toolTipContent = $cell.find('span.toolTipContent').text().trim();
                   if (toolTipContent) {
-                    // Extract nationality code from patterns like "Deutschland (GER)" or just "GER"
-                    const natMatch = toolTipContent.match(/\(([A-Z]{2,3})\)/) || toolTipContent.match(/^([A-Z]{2,3})$/);
+                    // Extract nationality code from patterns like "Deutschland (GER)" or "Iran, Islamische Republik (IRI)"
+                    const natMatch = toolTipContent.match(/\(([A-Z]{2,3})\)/);
                     if (natMatch) {
-                      nationality = natMatch[1];
-                    } else if (toolTipContent.length <= 10) { // Reasonable nationality length
-                      nationality = toolTipContent;
+                      nationality = natMatch[1]; // Extract just the code like "GER" or "IRI"
+                    } else if (/^[A-Z]{2,3}$/.test(toolTipContent)) {
+                      nationality = toolTipContent; // Already a code like "GER"
                     }
                   }
                   

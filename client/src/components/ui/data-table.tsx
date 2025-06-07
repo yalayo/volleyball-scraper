@@ -26,6 +26,21 @@ export default function DataTable<T extends { id: number }>({
 }: DataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState("");
 
+  const extractTextContent = (element: any): string => {
+    if (typeof element === 'string') return element;
+    if (typeof element === 'number') return element.toString();
+    if (!element) return '';
+    
+    if (element.props && element.props.children) {
+      if (Array.isArray(element.props.children)) {
+        return element.props.children.map(extractTextContent).join(' ');
+      }
+      return extractTextContent(element.props.children);
+    }
+    
+    return '';
+  };
+
   const filteredData = useMemo(() => {
     if (!searchTerm) return data;
     
@@ -47,22 +62,7 @@ export default function DataTable<T extends { id: number }>({
         return false;
       });
     });
-  }, [data, searchTerm, columns]);
-
-  const extractTextContent = (element: any): string => {
-    if (typeof element === 'string') return element;
-    if (typeof element === 'number') return element.toString();
-    if (!element) return '';
-    
-    if (element.props && element.props.children) {
-      if (Array.isArray(element.props.children)) {
-        return element.props.children.map(extractTextContent).join(' ');
-      }
-      return extractTextContent(element.props.children);
-    }
-    
-    return '';
-  };
+  }, [data, searchTerm, columns, extractTextContent]);
   if (loading) {
     return (
       <div className="space-y-4">

@@ -1,13 +1,141 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
 import { storage, type IStorage } from "./storage";
-import type { InsertLeague, InsertTeam, InsertScrapeLog } from "@shared/schema";
+import type { InsertLeague, InsertTeam, InsertPlayer, InsertScrapeLog } from "@shared/schema";
 
 interface ScrapedData {
   leagues: InsertLeague[];
   teams: InsertTeam[];
+  players: InsertPlayer[];
   seriesIds: string[];
   samsIds: string[];
+}
+
+async function scrapeTeamPlayers(
+  baseUrl: string,
+  teamId: string,
+  teamDbId: number,
+  storageInstance: IStorage
+): Promise<InsertPlayer[]> {
+  const players: InsertPlayer[] = [];
+  
+  try {
+    // Construct team detail URL to access player information
+    const teamUrl = baseUrl.replace(
+      /(&LeaguePresenter\.view=teamOverview.*)?$/,
+      `&LeaguePresenter.teamListView.view=teamMain&LeaguePresenter.view=teamOverview&LeaguePresenter.teamListView.teamId=${teamId}`
+    );
+
+    const response = await axios.get(teamUrl, {
+      timeout: 15000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    });
+
+    const $ = cheerio.load(response.data);
+
+    // Look for player information in various possible structures
+    // Method 1: Look for player tables
+    $('table tr').each((_, row) => {
+      const $row = $(row);
+      const cells = $row.find('td');
+      
+      if (cells.length >= 2) {
+        const playerName = cells.eq(0).text().trim();
+        const jerseyNumber = cells.eq(1).text().trim();
+        const position = cells.length > 2 ? cells.eq(2).text().trim() : null;
+        
+        if (playerName && playerName !== 'Name' && playerName !== 'Spieler') {
+          players.push({
+            name: playerName,
+            position: position || null,
+            jerseyNumber: jerseyNumber || null,
+            teamId: teamDbId,
+            isActive: true
+          });
+        }
+      }
+    });
+
+    // Method 2: Look for player lists in div structures
+    if (players.length === 0) {
+      $('.player, .spieler, [class*="player"], [class*="spieler"]').each((_, element) => {
+        const $player = $(element);
+        const playerName = $player.text().trim();
+        
+        if (playerName && playerName.length > 2) {
+          // Try to extract jersey number from the text
+          const jerseyMatch = playerName.match(/(\d+)\s*[-.]?\s*(.+)/);
+          
+          if (jerseyMatch) {
+            players.push({
+              name: jerseyMatch[2].trim(),
+              position: null,
+              jerseyNumber: jerseyMatch[1],
+              teamId: teamDbId,
+              isActive: true
+            });
+          } else {
+            players.push({
+              name: playerName,
+              position: null,
+              jerseyNumber: null,
+              teamId: teamDbId,
+              isActive: true
+            });
+          }
+        }
+      });
+    }
+
+    // Method 3: Look for structured player data in spans or divs
+    if (players.length === 0) {
+      $('span, div').each((_, element) => {
+        const $element = $(element);
+        const text = $element.text().trim();
+        
+        // Look for patterns like "12. Max Mustermann" or "Max Mustermann (12)"
+        const playerPattern = /^(\d+)\.?\s*([A-Za-zÄÖÜäöüß\s\-']+)$|^([A-Za-zÄÖÜäöüß\s\-']+)\s*\((\d+)\)$/;
+        const match = text.match(playerPattern);
+        
+        if (match && text.length > 3 && text.length < 50) {
+          const name = (match[2] || match[3]).trim();
+          const number = match[1] || match[4];
+          
+          if (name && name.includes(' ')) { // Ensure it's a full name
+            players.push({
+              name,
+              position: null,
+              jerseyNumber: number || null,
+              teamId: teamDbId,
+              isActive: true
+            });
+          }
+        }
+      });
+    }
+
+    // Save players to database
+    const existingPlayers = await storageInstance.getPlayersByTeam(teamDbId);
+    
+    for (const playerData of players) {
+      const existingPlayer = existingPlayers.find(p => p.name === playerData.name);
+      
+      if (existingPlayer) {
+        await storageInstance.updatePlayer(existingPlayer.id, playerData);
+      } else {
+        await storageInstance.createPlayer(playerData);
+      }
+    }
+
+    console.log(`Found ${players.length} players for team ${teamId}`);
+    
+  } catch (error) {
+    console.error(`Error scraping players for team ${teamId}:`, error);
+  }
+
+  return players;
 }
 
 export async function scrapeVolleyballData(
@@ -20,6 +148,7 @@ export async function scrapeVolleyballData(
   let scrapedData: ScrapedData = {
     leagues: [],
     teams: [],
+    players: [],
     seriesIds: [],
     samsIds: []
   };
@@ -94,14 +223,28 @@ export async function scrapeVolleyballData(
 
     scrapedData.leagues.push(leagueData);
 
-    // Extract team information
+    // Extract team information from the new structure
     const teams: InsertTeam[] = [];
     let teamCount = 0;
 
-    // Look for team links with teamId parameters
-    $('a[href*="LeaguePresenter.teamListView.teamId"]').each((_, element) => {
-      const href = $(element).attr('href');
-      const teamName = $(element).text().trim();
+    // Look for teams in samsCmsTeamListComponentBlock structure
+    $('.samsCmsComponentBlock.samsCmsTeamListComponentBlock').each((_, element) => {
+      const $teamBlock = $(element);
+      
+      // Extract team name from header
+      const teamName = $teamBlock.find('.samsCmsComponentBlockHeader').text().trim();
+      
+      // Extract team ID from main team link
+      const teamLink = $teamBlock.find('a[href*="LeaguePresenter.teamListView.teamId"]').first();
+      const href = teamLink.attr('href');
+      
+      // Extract homepage URL
+      const homepageLink = $teamBlock.find('a.samsExternalLink[target="_blank"]');
+      const homepage = homepageLink.attr('href') || null;
+      
+      // Extract logo URL
+      const logoImg = $teamBlock.find('.samsCmsTeamListComponentLogoImage img');
+      const logoUrl = logoImg.attr('src') || null;
       
       if (href && teamName) {
         const teamIdMatch = href.match(/LeaguePresenter\.teamListView\.teamId=(\d+)/);
@@ -110,7 +253,7 @@ export async function scrapeVolleyballData(
           
           // Extract location from team name if possible
           let location: string | null = null;
-          const locationMatch = teamName.match(/^(.+?)\s+(.+)$/);
+          const locationMatch = teamName.match(/^(.+?)\s+(II|III|IV|2|3|4)$/) || teamName.match(/^([A-Z]+)\s+(.+)$/);
           if (locationMatch) {
             location = locationMatch[1];
           }
@@ -119,7 +262,9 @@ export async function scrapeVolleyballData(
             name: teamName,
             location,
             teamId,
-            samsId: null, // Will be filled if found in team-specific scraping
+            samsId: null,
+            homepage,
+            logoUrl,
             leagueId: league.id,
             isActive: true
           };
@@ -130,6 +275,43 @@ export async function scrapeVolleyballData(
         }
       }
     });
+
+    // Fallback: Look for team links with teamId parameters (old method)
+    if (teams.length === 0) {
+      $('a[href*="LeaguePresenter.teamListView.teamId"]').each((_, element) => {
+        const href = $(element).attr('href');
+        const teamName = $(element).text().trim();
+        
+        if (href && teamName) {
+          const teamIdMatch = href.match(/LeaguePresenter\.teamListView\.teamId=(\d+)/);
+          if (teamIdMatch) {
+            const teamId = teamIdMatch[1];
+            
+            // Extract location from team name if possible
+            let location: string | null = null;
+            const locationMatch = teamName.match(/^(.+?)\s+(.+)$/);
+            if (locationMatch) {
+              location = locationMatch[1];
+            }
+
+            const teamData: InsertTeam = {
+              name: teamName,
+              location,
+              teamId,
+              samsId: null,
+              homepage: null,
+              logoUrl: null,
+              leagueId: league.id,
+              isActive: true
+            };
+
+            teams.push(teamData);
+            scrapedData.teams.push(teamData);
+            teamCount++;
+          }
+        }
+      });
+    }
 
     // Alternative: Look for team data in tables
     if (teams.length === 0) {
@@ -167,20 +349,39 @@ export async function scrapeVolleyballData(
       });
     }
 
-    // Save teams to database
+    // Save teams to database and collect team database IDs for player scraping
     const existingTeams = await storageInstance.getTeamsByLeague(league.id);
     let createdCount = 0;
     let updatedCount = 0;
+    const teamDatabaseIds: { teamId: string; dbId: number }[] = [];
 
     for (const teamData of teams) {
       const existingTeam = existingTeams.find(t => t.teamId === teamData.teamId);
       
       if (existingTeam) {
         await storageInstance.updateTeam(existingTeam.id, teamData);
+        teamDatabaseIds.push({ teamId: teamData.teamId, dbId: existingTeam.id });
         updatedCount++;
       } else {
-        await storageInstance.createTeam(teamData);
+        const newTeam = await storageInstance.createTeam(teamData);
+        teamDatabaseIds.push({ teamId: teamData.teamId, dbId: newTeam.id });
         createdCount++;
+      }
+    }
+
+    // Scrape player information for each team
+    let totalPlayers = 0;
+    for (const team of teamDatabaseIds) {
+      try {
+        const players = await scrapeTeamPlayers(url, team.teamId, team.dbId, storageInstance);
+        scrapedData.players.push(...players);
+        totalPlayers += players.length;
+        
+        // Add delay between team requests to be respectful
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (error) {
+        console.error(`Failed to scrape players for team ${team.teamId}:`, error);
+        // Continue with next team
       }
     }
 
@@ -194,14 +395,14 @@ export async function scrapeVolleyballData(
       operation: `Scrape ${leagueName}`,
       status: 'success',
       message: `Successfully scraped ${leagueName}`,
-      details: `Found ${teamCount} teams, ${scrapedData.seriesIds.length} series, ${scrapedData.samsIds.length} SAMS components`,
+      details: `Found ${teamCount} teams, ${totalPlayers} players, ${scrapedData.seriesIds.length} series, ${scrapedData.samsIds.length} SAMS components`,
       duration,
-      recordsProcessed: teamCount,
+      recordsProcessed: teamCount + totalPlayers,
       recordsCreated: createdCount,
       recordsUpdated: updatedCount
     });
 
-    console.log(`Scraping completed for ${leagueName}: ${teamCount} teams processed`);
+    console.log(`Scraping completed for ${leagueName}: ${teamCount} teams and ${totalPlayers} players processed`);
 
   } catch (error) {
     const duration = Date.now() - startTime;

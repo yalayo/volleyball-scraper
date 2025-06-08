@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import DataTable from "@/components/ui/data-table";
 import MatchDetailsModal from "@/components/ui/match-details-modal";
-import { Eye, Filter, X, Trophy, BarChart3 } from "lucide-react";
+import { Eye, Filter, X, Trophy, BarChart3, Calendar } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { Match, League, Team } from "@shared/schema";
 
@@ -38,7 +38,7 @@ export default function GamesPage() {
     queryKey: ["/api/teams"],
   });
 
-  // Filter matches based on selected criteria
+  // Filter and sort matches based on selected criteria
   const filteredMatches = matches.filter(match => {
     if (selectedLeague !== "all" && match.league?.id !== parseInt(selectedLeague)) return false;
     if (selectedTeam !== "all" && !match.homeTeam?.name.includes(selectedTeam) && !match.awayTeam?.name.includes(selectedTeam)) return false;
@@ -51,6 +51,11 @@ export default function GamesPage() {
              (match.setResults && match.setResults.toLowerCase().includes(search));
     }
     return true;
+  }).sort((a, b) => {
+    // Sort by match date (most recent first)
+    const dateA = new Date(a.matchDate || a.createdAt || 0);
+    const dateB = new Date(b.matchDate || b.createdAt || 0);
+    return dateB.getTime() - dateA.getTime();
   });
 
   const clearFilters = () => {
@@ -74,6 +79,20 @@ export default function GamesPage() {
   const completedMatches = filteredMatches.filter(m => m.homeSets !== null && m.awaySets !== null).length;
   const averageSetsPerMatch = filteredMatches.length > 0 ? 
     filteredMatches.reduce((sum, m) => sum + ((m.homeSets || 0) + (m.awaySets || 0)), 0) / filteredMatches.length : 0;
+  
+  // Date-based statistics
+  const matchesWithDates = filteredMatches.filter(m => m.matchDate || m.createdAt);
+  const recentMatches = matchesWithDates.filter(m => {
+    const date = new Date(m.matchDate || m.createdAt!);
+    return Date.now() - date.getTime() < 7 * 24 * 60 * 60 * 1000; // Within 7 days
+  }).length;
+  
+  const dateRange = matchesWithDates.length > 0 ? (() => {
+    const dates = matchesWithDates.map(m => new Date(m.matchDate || m.createdAt!));
+    const earliest = new Date(Math.min(...dates.map(d => d.getTime())));
+    const latest = new Date(Math.max(...dates.map(d => d.getTime())));
+    return { earliest, latest };
+  })() : null;
 
   const matchColumns = [
     {
@@ -173,14 +192,29 @@ export default function GamesPage() {
     {
       key: "date",
       header: "Date",
-      render: (match: Match) => (
-        <div className="text-sm text-gray-600">
-          {match.matchDate || match.createdAt 
-            ? formatDistanceToNow(new Date(match.matchDate || match.createdAt!), { addSuffix: true })
-            : "-"
-          }
-        </div>
-      ),
+      render: (match: Match) => {
+        const matchDate = match.matchDate || match.createdAt;
+        if (!matchDate) return <span className="text-gray-400">-</span>;
+        
+        const date = new Date(matchDate);
+        const isToday = new Date().toDateString() === date.toDateString();
+        const isRecent = Date.now() - date.getTime() < 7 * 24 * 60 * 60 * 1000; // Within 7 days
+        
+        return (
+          <div className="text-sm">
+            <div className={`font-medium ${isToday ? 'text-green-600' : isRecent ? 'text-blue-600' : 'text-gray-700'}`}>
+              {date.toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric',
+                year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+              })}
+            </div>
+            <div className="text-xs text-gray-500">
+              {formatDistanceToNow(date, { addSuffix: true })}
+            </div>
+          </div>
+        );
+      },
     },
     {
       key: "actions",
@@ -207,6 +241,14 @@ export default function GamesPage() {
         <p className="text-gray-600 mt-2">
           Complete database of extracted volleyball matches with detailed set scores and team statistics
         </p>
+        {dateRange && (
+          <div className="mt-3 flex items-center space-x-2 text-sm text-blue-600">
+            <Calendar className="w-4 h-4" />
+            <span>
+              Matches from {dateRange.earliest.toLocaleDateString()} to {dateRange.latest.toLocaleDateString()}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Statistics Cards */}
@@ -250,10 +292,10 @@ export default function GamesPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <BarChart3 className="w-5 h-5 text-orange-600" />
+              <Calendar className="w-5 h-5 text-orange-600" />
               <div>
-                <div className="text-2xl font-bold">{averageSetsPerMatch.toFixed(1)}</div>
-                <div className="text-sm text-gray-600">Avg Sets/Match</div>
+                <div className="text-2xl font-bold">{recentMatches}</div>
+                <div className="text-sm text-gray-600">Recent (7 days)</div>
               </div>
             </div>
           </CardContent>

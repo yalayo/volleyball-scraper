@@ -160,6 +160,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public leagues endpoint
+  app.get("/api/leagues", async (req, res) => {
+    try {
+      const leagues = await storage.getLeagues();
+      res.json(leagues);
+    } catch (error) {
+      console.error("Error fetching leagues:", error);
+      res.status(500).json({ message: "Failed to fetch leagues" });
+    }
+  });
+
   // Admin-protected leagues endpoints
   app.get("/api/admin/leagues", requireAdmin, async (req, res) => {
     try {

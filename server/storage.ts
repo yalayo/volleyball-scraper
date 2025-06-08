@@ -1,6 +1,6 @@
-import { users, leagues, teams, players, scrapeLogs, matches, teamStats, teamHighlights, userTeamPreferences, playerAccounts, trainingSessions, trainingParticipants, type User, type InsertUser, type League, type InsertLeague, type Team, type InsertTeam, type Player, type InsertPlayer, type ScrapeLog, type InsertScrapeLog, type Match, type InsertMatch, type TeamStats, type InsertTeamStats, type TeamHighlight, type InsertTeamHighlight, type UserTeamPreference, type InsertUserTeamPreference, type PlayerAccount, type InsertPlayerAccount, type TrainingSession, type InsertTrainingSession, type TrainingParticipant, type InsertTrainingParticipant } from "@shared/schema";
+import { users, leagues, teams, players, scrapeLogs, matches, teamStats, teamHighlights, userTeamPreferences, playerAccounts, trainingSessions, trainingParticipants, playerVerifications, type User, type InsertUser, type League, type InsertLeague, type Team, type InsertTeam, type Player, type InsertPlayer, type ScrapeLog, type InsertScrapeLog, type Match, type InsertMatch, type TeamStats, type InsertTeamStats, type TeamHighlight, type InsertTeamHighlight, type UserTeamPreference, type InsertUserTeamPreference, type PlayerAccount, type InsertPlayerAccount, type TrainingSession, type InsertTrainingSession, type TrainingParticipant, type InsertTrainingParticipant, type PlayerVerification, type InsertPlayerVerification } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, count, sql, or } from "drizzle-orm";
+import { eq, desc, count, sql, or, and } from "drizzle-orm";
 
 export interface IStorage {
   // User methods

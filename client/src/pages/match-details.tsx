@@ -1,3 +1,4 @@
+import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,6 +60,15 @@ export default function MatchDetails() {
     queryKey: [`/api/matches/${matchId}/details`],
     enabled: !!matchId,
   });
+
+  // Debug logging when match data changes
+  React.useEffect(() => {
+    if (match) {
+      console.log('Match details loaded:', match);
+      console.log('Sets count:', match.sets?.length || 0);
+      console.log('Lineups count:', match.lineups?.length || 0);
+    }
+  }, [match]);
 
   const processPdfMutation = useMutation({
     mutationFn: () => apiRequest("POST", `/api/matches/${matchId}/process-pdf`),
@@ -367,8 +377,11 @@ export default function MatchDetails() {
         </Card>
       )}
 
+      {/* Debug info */}
+      {console.log('Rendering match details. Sets length:', match?.sets?.length, 'Lineups length:', match?.lineups?.length)}
+      
       {/* No detailed data message */}
-      {match.sets.length === 0 && (
+      {(!match.sets || match.sets.length === 0) && (
         <Card>
           <CardContent className="text-center py-8">
             <div className="space-y-4">

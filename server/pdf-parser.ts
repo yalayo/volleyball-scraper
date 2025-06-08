@@ -179,10 +179,10 @@ export class VolleyballPDFParser {
       const line = lines[i];
       
       // SAMS scoresheets often have team names in format "Team A vs Team B" or separated by specific patterns
-      const vsMatch = line.match(/(.+?)\s+(?:vs|gegen|—|-)\s+(.+)/i);
-      if (vsMatch) {
-        homeTeamName = vsMatch[1].trim();
-        awayTeamName = vsMatch[2].trim();
+      const teamVsMatch = line.match(/(.+?)\s+(?:vs|gegen|—|-)\s+(.+)/i);
+      if (teamVsMatch) {
+        homeTeamName = teamVsMatch[1].trim();
+        awayTeamName = teamVsMatch[2].trim();
         break;
       }
       
@@ -201,13 +201,7 @@ export class VolleyballPDFParser {
         }
       }
       
-      // Pattern: "Team A vs Team B" or "Team A - Team B"
-      const vsMatch = line.match(/^(.+?)\s+(?:vs|gegen|-)\s+(.+?)$/i);
-      if (vsMatch) {
-        homeTeamName = vsMatch[1].trim();
-        awayTeamName = vsMatch[2].trim();
-        break;
-      }
+
       
       // Pattern: Look for "Heim:" and "Gast:" (German)
       if (line.toLowerCase().includes('heim:') || line.toLowerCase().includes('home:')) {

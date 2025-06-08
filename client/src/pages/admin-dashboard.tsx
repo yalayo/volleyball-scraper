@@ -135,15 +135,17 @@ export default function AdminDashboard() {
 
   const handleStatClick = (type: 'leagues' | 'teams' | 'players' | 'matches') => {
     switch (type) {
-      case 'matches':
-        setLocation('/games');
+      case 'leagues':
+        setLocation('/leagues');
+        break;
+      case 'teams':
+        setLocation('/teams');
         break;
       case 'players':
         setLocation('/players');
         break;
-      case 'teams':
-      case 'leagues':
-        // These stay on the dashboard for now, could add dedicated pages later
+      case 'matches':
+        setLocation('/games');
         break;
     }
   };

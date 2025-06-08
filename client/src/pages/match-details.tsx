@@ -47,7 +47,7 @@ export default function MatchDetails() {
   const matchId = params?.id;
 
   const { data: match, isLoading } = useQuery<MatchDetails>({
-    queryKey: ["/api/matches", matchId, "details"],
+    queryKey: [`/api/matches/${matchId}/details`],
     enabled: !!matchId,
   });
 
@@ -236,7 +236,7 @@ export default function MatchDetails() {
       </Card>
 
       {/* Detailed Set Analysis */}
-      {match.sets.length > 0 && (
+      {match.sets && match.sets.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

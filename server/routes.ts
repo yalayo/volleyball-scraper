@@ -309,8 +309,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid match ID" });
       }
 
-      // Get match details
-      const match = await storage.getMatch(matchId);
+      // Get match details with team information
+      const matches = await storage.getMatches();
+      const match = matches.find(m => m.id === matchId);
       if (!match) {
         return res.status(404).json({ message: "Match not found" });
       }
@@ -321,11 +322,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get match lineups (player positions for each set)
       const lineups = await storage.getMatchLineups(matchId);
 
-      // Combine all data for comprehensive match analytics
+      // Combine all data for comprehensive match analytics with proper team names
       const detailedMatch = {
-        ...match,
-        sets,
-        lineups
+        id: match.id,
+        homeTeamName: match.homeTeam?.name || "Unknown Team",
+        awayTeamName: match.awayTeam?.name || "Unknown Team",
+        homeScore: match.homeScore || 0,
+        awayScore: match.awayScore || 0,
+        homeSets: match.homeSets || 0,
+        awaySets: match.awaySets || 0,
+        setResults: match.setResults,
+        matchDate: match.matchDate,
+        status: match.status || "unknown",
+        location: match.location,
+        scoresheetPdfUrl: match.scoresheetPdfUrl,
+        sets: sets || [],
+        lineups: lineups || []
       };
 
       res.json(detailedMatch);

@@ -1265,6 +1265,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin player verification routes
+  app.get('/api/player-accounts/:id', requireAdmin, async (req, res) => {
+    try {
+      const playerAccountId = parseInt(req.params.id);
+      
+      if (isNaN(playerAccountId)) {
+        return res.status(400).json({ message: "Invalid player account ID" });
+      }
+
+      const playerAccount = await storage.getPlayerAccountById(playerAccountId);
+      
+      if (!playerAccount) {
+        return res.status(404).json({ message: "Player account not found" });
+      }
+
+      res.json(playerAccount);
+    } catch (error) {
+      console.error("Error fetching player account:", error);
+      res.status(500).json({ message: "Failed to fetch player account" });
+    }
+  });
+
+  app.post('/api/admin/verify-player', requireAdmin, async (req, res) => {
+    try {
+      const { playerAccountId, adminId } = req.body;
+      
+      if (!playerAccountId || !adminId) {
+        return res.status(400).json({ message: "Player account ID and admin ID are required" });
+      }
+
+      // Check if player account exists
+      const playerAccount = await storage.getPlayerAccountById(playerAccountId);
+      if (!playerAccount) {
+        return res.status(404).json({ message: "Player account not found" });
+      }
+
+      // Admin verification immediately sets status to verified
+      const verification = await storage.createPlayerVerification({
+        playerAccountId,
+        verifiedByPlayerId: adminId,
+        verificationNote: 'Admin verification',
+        isApproved: true
+      });
+
+      // Update player account verification status
+      await storage.updatePlayerAccountVerification(playerAccountId, 'verified');
+
+      res.json({ 
+        message: "Player successfully verified by admin",
+        verification 
+      });
+    } catch (error) {
+      console.error("Error verifying player:", error);
+      res.status(500).json({ message: "Failed to verify player" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

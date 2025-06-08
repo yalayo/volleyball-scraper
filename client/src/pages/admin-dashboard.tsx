@@ -45,7 +45,7 @@ export default function AdminDashboard() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [playerAccountId, setPlayerAccountId] = useState("");
-  const [playerToVerify, setPlayerToVerify] = useState(null);
+  const [playerToVerify, setPlayerToVerify] = useState<any>(null);
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 

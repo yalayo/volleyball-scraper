@@ -118,6 +118,8 @@ export interface IStorage {
     totalNeeded: number;
     isFullyVerified: boolean;
   }>;
+  getPlayerAccountById(playerAccountId: number): Promise<(PlayerAccount & { player?: Player & { team?: Team } }) | undefined>;
+  updatePlayerAccountVerification(playerAccountId: number, status: string): Promise<void>;
   verifyPlayerBySamsId(verifierPlayerId: number, targetSamsId: string, isTrainer: boolean): Promise<PlayerVerification>;
 
   // Summer league methods
@@ -1193,6 +1195,54 @@ export class DatabaseStorage implements IStorage {
     }
 
     return verification;
+  }
+
+  async getPlayerAccountById(playerAccountId: number): Promise<(PlayerAccount & { player?: Player & { team?: Team } }) | undefined> {
+    const [account] = await db
+      .select()
+      .from(playerAccounts)
+      .where(eq(playerAccounts.id, playerAccountId));
+
+    if (!account) {
+      return undefined;
+    }
+
+    // Get associated player data if available
+    let player = undefined;
+    if (account.samsPlayerId) {
+      const [playerData] = await db
+        .select()
+        .from(players)
+        .where(eq(players.samsPlayerId, account.samsPlayerId));
+
+      if (playerData) {
+        // Get team data
+        const [team] = await db
+          .select()
+          .from(teams)
+          .where(eq(teams.id, playerData.teamId));
+
+        player = {
+          ...playerData,
+          team: team || undefined
+        };
+      }
+    }
+
+    return {
+      ...account,
+      player
+    };
+  }
+
+  async updatePlayerAccountVerification(playerAccountId: number, status: string): Promise<void> {
+    await db
+      .update(playerAccounts)
+      .set({
+        verificationStatus: status,
+        updatedAt: new Date()
+      })
+      .where(eq(playerAccounts.id, playerAccountId));
   }
 
   // Summer league methods

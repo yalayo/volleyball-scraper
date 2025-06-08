@@ -908,21 +908,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Player dashboard - get matches for player's team
-  app.get('/api/player-dashboard/matches/:samsPlayerId', async (req, res) => {
+  app.get('/api/player-dashboard/matches', async (req, res) => {
     try {
-      const { samsPlayerId } = req.params;
+      const { samsPlayerId } = req.query;
+      
+      console.log("API called with samsPlayerId:", samsPlayerId);
+      
+      if (!samsPlayerId) {
+        return res.status(400).json({ message: "SAMS Player ID is required" });
+      }
       
       // Find player by SAMS ID to get their team
-      const player = await storage.getPlayerBySamsId(samsPlayerId);
+      const player = await storage.getPlayerBySamsId(samsPlayerId as string);
+      console.log("Player found:", player);
+      
       if (!player) {
         return res.status(404).json({ message: "Player not found" });
       }
 
       // Get matches for the player's team
       if (!player.teamId) {
-        return res.status(400).json({ message: "Player is not assigned to a team" });
+        console.log("Player has no teamId, returning empty array");
+        return res.json([]); // Return empty array if player has no team
       }
+      
+      console.log("Fetching matches for teamId:", player.teamId);
       const matches = await storage.getMatchesByTeam(player.teamId);
+      console.log("Matches found:", matches.length);
       res.json(matches);
     } catch (error) {
       console.error("Error fetching player matches:", error);
@@ -931,18 +943,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Player dashboard - get training sessions for player's team
-  app.get('/api/player-dashboard/training-sessions/:samsPlayerId', async (req, res) => {
+  app.get('/api/player-dashboard/training-sessions', async (req, res) => {
     try {
-      const { samsPlayerId } = req.params;
+      const { samsPlayerId } = req.query;
+      
+      if (!samsPlayerId) {
+        return res.status(400).json({ message: "SAMS Player ID is required" });
+      }
       
       // Find player by SAMS ID to get their team
-      const player = await storage.getPlayerBySamsId(samsPlayerId);
+      const player = await storage.getPlayerBySamsId(samsPlayerId as string);
       if (!player) {
         return res.status(404).json({ message: "Player not found" });
       }
 
       if (!player.teamId) {
-        return res.status(400).json({ message: "Player is not assigned to a team" });
+        return res.json([]); // Return empty array if player has no team
       }
 
       // Get training sessions for the player's team

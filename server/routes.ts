@@ -563,7 +563,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const lineupData of pdfData.lineups) {
           lineupData.matchId = matchId;
           // Use actual team IDs from the match
-          lineupData.teamId = lineupData.teamId === 0 ? match.homeTeamId : match.awayTeamId;
+          lineupData.teamId = lineupData.teamId === 0 ? 
+            (match.homeTeamId || 0) : 
+            (match.awayTeamId || 0);
           await storage.createMatchLineup(lineupData);
         }
         
@@ -581,6 +583,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Failed to process PDF",
         error: error.message 
       });
+    }
+  });
+
+  // Get match sets for a specific match
+  app.get("/api/matches/:id/sets", async (req: Request, res: Response) => {
+    const matchId = parseInt(req.params.id);
+    
+    try {
+      const sets = await storage.getMatchSets(matchId);
+      res.json(sets);
+    } catch (error) {
+      console.error("Error fetching match sets:", error);
+      res.status(500).json({ message: "Failed to fetch match sets" });
+    }
+  });
+
+  // Get match lineups for a specific match
+  app.get("/api/matches/:id/lineups", async (req: Request, res: Response) => {
+    const matchId = parseInt(req.params.id);
+    
+    try {
+      const lineups = await storage.getMatchLineups(matchId);
+      res.json(lineups);
+    } catch (error) {
+      console.error("Error fetching match lineups:", error);
+      res.status(500).json({ message: "Failed to fetch match lineups" });
     }
   });
 

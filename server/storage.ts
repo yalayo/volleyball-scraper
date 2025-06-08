@@ -1,4 +1,4 @@
-import { users, leagues, teams, players, scrapeLogs, matches, matchSets, matchLineups, teamStats, teamHighlights, userTeamPreferences, playerAccounts, trainingSessions, trainingParticipants, playerVerifications, type User, type InsertUser, type League, type InsertLeague, type Team, type InsertTeam, type Player, type InsertPlayer, type ScrapeLog, type InsertScrapeLog, type Match, type InsertMatch, type MatchSet, type InsertMatchSet, type MatchLineup, type InsertMatchLineup, type TeamStats, type InsertTeamStats, type TeamHighlight, type InsertTeamHighlight, type UserTeamPreference, type InsertUserTeamPreference, type PlayerAccount, type InsertPlayerAccount, type TrainingSession, type InsertTrainingSession, type TrainingParticipant, type InsertTrainingParticipant, type PlayerVerification, type InsertPlayerVerification } from "@shared/schema";
+import { users, leagues, teams, players, scrapeLogs, matches, matchSets, matchLineups, teamStats, teamHighlights, userTeamPreferences, playerAccounts, trainingSessions, trainingParticipants, playerVerifications, summerLeagues, summerTeamApplications, friendlyMatchRequests, trainingInvitations, type User, type InsertUser, type League, type InsertLeague, type Team, type InsertTeam, type Player, type InsertPlayer, type ScrapeLog, type InsertScrapeLog, type Match, type InsertMatch, type MatchSet, type InsertMatchSet, type MatchLineup, type InsertMatchLineup, type TeamStats, type InsertTeamStats, type TeamHighlight, type InsertTeamHighlight, type UserTeamPreference, type InsertUserTeamPreference, type PlayerAccount, type InsertPlayerAccount, type TrainingSession, type InsertTrainingSession, type TrainingParticipant, type InsertTrainingParticipant, type PlayerVerification, type InsertPlayerVerification, type SummerLeague, type InsertSummerLeague, type SummerTeamApplication, type InsertSummerTeamApplication, type FriendlyMatchRequest, type InsertFriendlyMatchRequest, type TrainingInvitation, type InsertTrainingInvitation } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, count, sql, or, and } from "drizzle-orm";
 import bcrypt from "bcrypt";
@@ -1193,6 +1193,186 @@ export class DatabaseStorage implements IStorage {
     }
 
     return verification;
+  }
+
+  // Summer league methods
+  async getSummerLeagues(): Promise<(SummerLeague & { creator?: PlayerAccount })[]> {
+    const results = await db
+      .select()
+      .from(summerLeagues)
+      .leftJoin(playerAccounts, eq(summerLeagues.creatorId, playerAccounts.id))
+      .orderBy(desc(summerLeagues.createdAt));
+
+    return results.map(row => ({
+      ...row.summer_leagues,
+      creator: row.player_accounts || undefined,
+    }));
+  }
+
+  async getSummerLeague(id: number): Promise<SummerLeague | undefined> {
+    const [league] = await db.select().from(summerLeagues).where(eq(summerLeagues.id, id));
+    return league;
+  }
+
+  async createSummerLeague(league: InsertSummerLeague): Promise<SummerLeague> {
+    const [created] = await db.insert(summerLeagues).values(league).returning();
+    return created;
+  }
+
+  async updateSummerLeague(id: number, league: Partial<InsertSummerLeague>): Promise<SummerLeague | undefined> {
+    const [updated] = await db
+      .update(summerLeagues)
+      .set({ ...league, updatedAt: new Date() })
+      .where(eq(summerLeagues.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteSummerLeague(id: number): Promise<boolean> {
+    const result = await db.delete(summerLeagues).where(eq(summerLeagues.id, id));
+    return result.rowCount > 0;
+  }
+
+  // Summer team application methods
+  async getSummerTeamApplications(summerLeagueId?: number): Promise<(SummerTeamApplication & { captain?: PlayerAccount; league?: SummerLeague })[]> {
+    let query = db
+      .select()
+      .from(summerTeamApplications)
+      .leftJoin(playerAccounts, eq(summerTeamApplications.captainId, playerAccounts.id))
+      .leftJoin(summerLeagues, eq(summerTeamApplications.summerLeagueId, summerLeagues.id))
+      .orderBy(desc(summerTeamApplications.appliedAt));
+
+    if (summerLeagueId) {
+      query = query.where(eq(summerTeamApplications.summerLeagueId, summerLeagueId));
+    }
+
+    const results = await query;
+    return results.map(row => ({
+      ...row.summer_team_applications,
+      captain: row.player_accounts || undefined,
+      league: row.summer_leagues || undefined,
+    }));
+  }
+
+  async getSummerTeamApplication(id: number): Promise<SummerTeamApplication | undefined> {
+    const [application] = await db.select().from(summerTeamApplications).where(eq(summerTeamApplications.id, id));
+    return application;
+  }
+
+  async createSummerTeamApplication(application: InsertSummerTeamApplication): Promise<SummerTeamApplication> {
+    const [created] = await db.insert(summerTeamApplications).values(application).returning();
+    return created;
+  }
+
+  async updateSummerTeamApplication(id: number, application: Partial<InsertSummerTeamApplication>): Promise<SummerTeamApplication | undefined> {
+    const [updated] = await db
+      .update(summerTeamApplications)
+      .set(application)
+      .where(eq(summerTeamApplications.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteSummerTeamApplication(id: number): Promise<boolean> {
+    const result = await db.delete(summerTeamApplications).where(eq(summerTeamApplications.id, id));
+    return result.rowCount > 0;
+  }
+
+  // Friendly match request methods
+  async getFriendlyMatchRequests(teamId?: number): Promise<(FriendlyMatchRequest & { requestingTeam?: Team; targetTeam?: Team; trainer?: PlayerAccount })[]> {
+    let query = db
+      .select()
+      .from(friendlyMatchRequests)
+      .leftJoin(teams, eq(friendlyMatchRequests.requestingTeamId, teams.id))
+      .leftJoin(playerAccounts, eq(friendlyMatchRequests.requestingTrainerId, playerAccounts.id))
+      .orderBy(desc(friendlyMatchRequests.createdAt));
+
+    if (teamId) {
+      query = query.where(
+        or(
+          eq(friendlyMatchRequests.requestingTeamId, teamId),
+          eq(friendlyMatchRequests.targetTeamId, teamId)
+        )
+      );
+    }
+
+    const results = await query;
+    // Note: Need to fix the join aliases to get both requesting and target teams
+    return results.map(row => ({
+      ...row.friendly_match_requests,
+      requestingTeam: row.teams || undefined,
+      trainer: row.player_accounts || undefined,
+    }));
+  }
+
+  async getFriendlyMatchRequest(id: number): Promise<FriendlyMatchRequest | undefined> {
+    const [request] = await db.select().from(friendlyMatchRequests).where(eq(friendlyMatchRequests.id, id));
+    return request;
+  }
+
+  async createFriendlyMatchRequest(request: InsertFriendlyMatchRequest): Promise<FriendlyMatchRequest> {
+    const [created] = await db.insert(friendlyMatchRequests).values(request).returning();
+    return created;
+  }
+
+  async updateFriendlyMatchRequest(id: number, request: Partial<InsertFriendlyMatchRequest>): Promise<FriendlyMatchRequest | undefined> {
+    const [updated] = await db
+      .update(friendlyMatchRequests)
+      .set(request)
+      .where(eq(friendlyMatchRequests.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteFriendlyMatchRequest(id: number): Promise<boolean> {
+    const result = await db.delete(friendlyMatchRequests).where(eq(friendlyMatchRequests.id, id));
+    return result.rowCount > 0;
+  }
+
+  // Training invitation methods
+  async getTrainingInvitations(playerId?: number, trainerId?: number): Promise<(TrainingInvitation & { trainer?: PlayerAccount; invitedPlayer?: PlayerAccount })[]> {
+    let query = db
+      .select()
+      .from(trainingInvitations)
+      .leftJoin(playerAccounts, eq(trainingInvitations.trainerId, playerAccounts.id))
+      .orderBy(desc(trainingInvitations.createdAt));
+
+    if (playerId) {
+      query = query.where(eq(trainingInvitations.invitedPlayerId, playerId));
+    }
+    if (trainerId) {
+      query = query.where(eq(trainingInvitations.trainerId, trainerId));
+    }
+
+    const results = await query;
+    return results.map(row => ({
+      ...row.training_invitations,
+      trainer: row.player_accounts || undefined,
+    }));
+  }
+
+  async getTrainingInvitation(id: number): Promise<TrainingInvitation | undefined> {
+    const [invitation] = await db.select().from(trainingInvitations).where(eq(trainingInvitations.id, id));
+    return invitation;
+  }
+
+  async createTrainingInvitation(invitation: InsertTrainingInvitation): Promise<TrainingInvitation> {
+    const [created] = await db.insert(trainingInvitations).values(invitation).returning();
+    return created;
+  }
+
+  async updateTrainingInvitation(id: number, invitation: Partial<InsertTrainingInvitation>): Promise<TrainingInvitation | undefined> {
+    const [updated] = await db
+      .update(trainingInvitations)
+      .set(invitation)
+      .where(eq(trainingInvitations.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteTrainingInvitation(id: number): Promise<boolean> {
+    const result = await db.delete(trainingInvitations).where(eq(trainingInvitations.id, id));
+    return result.rowCount > 0;
   }
 }
 

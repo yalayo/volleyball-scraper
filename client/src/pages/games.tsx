@@ -222,9 +222,14 @@ export default function Games() {
                         {status === "completed" && (
                           <div className="text-right">
                             <div className="text-2xl font-bold text-gray-900">
-                              {match.homeScore} - {match.awayScore}
+                              {match.homeSets || 0} - {match.awaySets || 0}
                             </div>
-                            <div className="text-xs text-gray-500">Final Score</div>
+                            <div className="text-xs text-gray-500">Sets Won</div>
+                            {match.setResults && (
+                              <div className="text-xs text-gray-400 mt-1">
+                                {match.setResults}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

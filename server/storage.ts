@@ -521,6 +521,281 @@ export class DatabaseStorage implements IStorage {
       lastScrapeTime: lastScrape?.createdAt?.toISOString() || null,
     };
   }
+
+  // Team Highlights methods implementation
+  async getTeamHighlights(teamId: number): Promise<(TeamHighlight & { team?: Team; match?: Match })[]> {
+    const result = await db
+      .select({
+        id: teamHighlights.id,
+        teamId: teamHighlights.teamId,
+        highlightType: teamHighlights.highlightType,
+        title: teamHighlights.title,
+        description: teamHighlights.description,
+        matchId: teamHighlights.matchId,
+        value: teamHighlights.value,
+        dateAchieved: teamHighlights.dateAchieved,
+        priority: teamHighlights.priority,
+        isActive: teamHighlights.isActive,
+        createdAt: teamHighlights.createdAt,
+        updatedAt: teamHighlights.updatedAt,
+        team: teams,
+        match: matches,
+      })
+      .from(teamHighlights)
+      .leftJoin(teams, eq(teamHighlights.teamId, teams.id))
+      .leftJoin(matches, eq(teamHighlights.matchId, matches.id))
+      .where(eq(teamHighlights.teamId, teamId))
+      .orderBy(desc(teamHighlights.priority), desc(teamHighlights.dateAchieved));
+
+    return result.map(row => ({
+      id: row.id,
+      teamId: row.teamId,
+      highlightType: row.highlightType,
+      title: row.title,
+      description: row.description,
+      matchId: row.matchId,
+      value: row.value,
+      dateAchieved: row.dateAchieved,
+      priority: row.priority,
+      isActive: row.isActive,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      team: row.team,
+      match: row.match,
+    }));
+  }
+
+  async getAllTeamHighlights(): Promise<(TeamHighlight & { team?: Team; match?: Match })[]> {
+    const result = await db
+      .select({
+        id: teamHighlights.id,
+        teamId: teamHighlights.teamId,
+        highlightType: teamHighlights.highlightType,
+        title: teamHighlights.title,
+        description: teamHighlights.description,
+        matchId: teamHighlights.matchId,
+        value: teamHighlights.value,
+        dateAchieved: teamHighlights.dateAchieved,
+        priority: teamHighlights.priority,
+        isActive: teamHighlights.isActive,
+        createdAt: teamHighlights.createdAt,
+        updatedAt: teamHighlights.updatedAt,
+        team: teams,
+        match: matches,
+      })
+      .from(teamHighlights)
+      .leftJoin(teams, eq(teamHighlights.teamId, teams.id))
+      .leftJoin(matches, eq(teamHighlights.matchId, matches.id))
+      .where(eq(teamHighlights.isActive, true))
+      .orderBy(desc(teamHighlights.priority), desc(teamHighlights.dateAchieved));
+
+    return result.map(row => ({
+      id: row.id,
+      teamId: row.teamId,
+      highlightType: row.highlightType,
+      title: row.title,
+      description: row.description,
+      matchId: row.matchId,
+      value: row.value,
+      dateAchieved: row.dateAchieved,
+      priority: row.priority,
+      isActive: row.isActive,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      team: row.team,
+      match: row.match,
+    }));
+  }
+
+  async createTeamHighlight(highlight: InsertTeamHighlight): Promise<TeamHighlight> {
+    const [newHighlight] = await db
+      .insert(teamHighlights)
+      .values(highlight)
+      .returning();
+    return newHighlight;
+  }
+
+  async updateTeamHighlight(id: number, highlight: Partial<InsertTeamHighlight>): Promise<TeamHighlight | undefined> {
+    const [updatedHighlight] = await db
+      .update(teamHighlights)
+      .set({ ...highlight, updatedAt: new Date() })
+      .where(eq(teamHighlights.id, id))
+      .returning();
+    return updatedHighlight || undefined;
+  }
+
+  async deleteTeamHighlight(id: number): Promise<boolean> {
+    const result = await db.delete(teamHighlights).where(eq(teamHighlights.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async generateTeamHighlights(teamId: number): Promise<TeamHighlight[]> {
+    const highlights: TeamHighlight[] = [];
+    
+    // Get team matches ordered by date
+    const teamMatches = await db
+      .select()
+      .from(matches)
+      .where(sql`${matches.homeTeamId} = ${teamId} OR ${matches.awayTeamId} = ${teamId}`)
+      .orderBy(desc(matches.matchDate));
+
+    if (teamMatches.length === 0) return highlights;
+
+    // Analyze for win streaks
+    let currentWinStreak = 0;
+    let maxWinStreak = 0;
+    let streakStartDate: Date | null = null;
+
+    for (const match of teamMatches.reverse()) {
+      const isHome = match.homeTeamId === teamId;
+      const teamWon = isHome ? 
+        (match.homeSets || 0) > (match.awaySets || 0) : 
+        (match.awaySets || 0) > (match.homeSets || 0);
+
+      if (teamWon) {
+        if (currentWinStreak === 0) {
+          streakStartDate = match.matchDate;
+        }
+        currentWinStreak++;
+        maxWinStreak = Math.max(maxWinStreak, currentWinStreak);
+      } else {
+        currentWinStreak = 0;
+      }
+    }
+
+    // Create win streak highlight if significant
+    if (maxWinStreak >= 3) {
+      const highlight = await this.createTeamHighlight({
+        teamId,
+        highlightType: 'win_streak',
+        title: `${maxWinStreak}-Game Win Streak`,
+        description: `Achieved an impressive ${maxWinStreak} consecutive victories`,
+        value: maxWinStreak,
+        dateAchieved: streakStartDate || new Date(),
+        priority: maxWinStreak >= 5 ? 5 : 4,
+      });
+      highlights.push(highlight);
+    }
+
+    // Find dominant performances (3-0 wins)
+    const dominantWins = teamMatches.filter(match => {
+      const isHome = match.homeTeamId === teamId;
+      const teamSets = isHome ? match.homeSets : match.awaySets;
+      const opponentSets = isHome ? match.awaySets : match.homeSets;
+      return teamSets === 3 && opponentSets === 0;
+    });
+
+    if (dominantWins.length >= 3) {
+      const highlight = await this.createTeamHighlight({
+        teamId,
+        highlightType: 'dominant_performance',
+        title: `${dominantWins.length} Dominant Victories`,
+        description: `Secured ${dominantWins.length} straight-set (3-0) victories this season`,
+        value: dominantWins.length,
+        dateAchieved: dominantWins[0]?.matchDate || new Date(),
+        priority: 3,
+      });
+      highlights.push(highlight);
+    }
+
+    // Find comeback victories (won after losing first set)
+    const comebackWins = teamMatches.filter(match => {
+      if (!match.setResults) return false;
+      
+      const sets = match.setResults.split(',').map(s => s.trim());
+      if (sets.length < 4) return false;
+
+      const isHome = match.homeTeamId === teamId;
+      const teamWon = isHome ? 
+        (match.homeSets || 0) > (match.awaySets || 0) : 
+        (match.awaySets || 0) > (match.homeSets || 0);
+
+      if (!teamWon) return false;
+
+      // Check if team lost first set
+      const firstSet = sets[0];
+      const [score1, score2] = firstSet.split(':').map(s => parseInt(s.trim()));
+      const teamLostFirstSet = isHome ? score1 < score2 : score2 < score1;
+
+      return teamLostFirstSet;
+    });
+
+    if (comebackWins.length >= 2) {
+      const highlight = await this.createTeamHighlight({
+        teamId,
+        highlightType: 'comeback',
+        title: `${comebackWins.length} Comeback Victories`,
+        description: `Showed resilience with ${comebackWins.length} comeback wins after losing the first set`,
+        value: comebackWins.length,
+        dateAchieved: comebackWins[0]?.matchDate || new Date(),
+        priority: 4,
+      });
+      highlights.push(highlight);
+    }
+
+    return highlights;
+  }
+
+  // User Team Preferences methods implementation
+  async getUserTeamPreferences(userId: number): Promise<(UserTeamPreference & { team?: Team })[]> {
+    const result = await db
+      .select({
+        id: userTeamPreferences.id,
+        userId: userTeamPreferences.userId,
+        teamId: userTeamPreferences.teamId,
+        isFavorite: userTeamPreferences.isFavorite,
+        notificationEnabled: userTeamPreferences.notificationEnabled,
+        highlightPreferences: userTeamPreferences.highlightPreferences,
+        createdAt: userTeamPreferences.createdAt,
+        updatedAt: userTeamPreferences.updatedAt,
+        team: teams,
+      })
+      .from(userTeamPreferences)
+      .leftJoin(teams, eq(userTeamPreferences.teamId, teams.id))
+      .where(eq(userTeamPreferences.userId, userId));
+
+    return result.map(row => ({
+      id: row.id,
+      userId: row.userId,
+      teamId: row.teamId,
+      isFavorite: row.isFavorite,
+      notificationEnabled: row.notificationEnabled,
+      highlightPreferences: row.highlightPreferences,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      team: row.team,
+    }));
+  }
+
+  async getUserTeamPreference(userId: number, teamId: number): Promise<UserTeamPreference | undefined> {
+    const [preference] = await db
+      .select()
+      .from(userTeamPreferences)
+      .where(sql`${userTeamPreferences.userId} = ${userId} AND ${userTeamPreferences.teamId} = ${teamId}`);
+    return preference || undefined;
+  }
+
+  async createUserTeamPreference(preference: InsertUserTeamPreference): Promise<UserTeamPreference> {
+    const [newPreference] = await db
+      .insert(userTeamPreferences)
+      .values(preference)
+      .returning();
+    return newPreference;
+  }
+
+  async updateUserTeamPreference(id: number, preference: Partial<InsertUserTeamPreference>): Promise<UserTeamPreference | undefined> {
+    const [updatedPreference] = await db
+      .update(userTeamPreferences)
+      .set({ ...preference, updatedAt: new Date() })
+      .where(eq(userTeamPreferences.id, id))
+      .returning();
+    return updatedPreference || undefined;
+  }
+
+  async deleteUserTeamPreference(id: number): Promise<boolean> {
+    const result = await db.delete(userTeamPreferences).where(eq(userTeamPreferences.id, id));
+    return (result.rowCount || 0) > 0;
+  }
 }
 
 export const storage = new DatabaseStorage();

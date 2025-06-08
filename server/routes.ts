@@ -284,6 +284,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Team Highlights endpoints
+  app.get("/api/team-highlights", async (req, res) => {
+    try {
+      const highlights = await storage.getAllTeamHighlights();
+      res.json(highlights);
+    } catch (error) {
+      console.error("Error fetching all team highlights:", error);
+      res.status(500).json({ error: "Failed to fetch team highlights" });
+    }
+  });
+
+  app.get("/api/team-highlights/:teamId", async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid team ID" });
+      }
+      
+      const highlights = await storage.getTeamHighlights(teamId);
+      res.json(highlights);
+    } catch (error) {
+      console.error("Error fetching team highlights:", error);
+      res.status(500).json({ error: "Failed to fetch team highlights" });
+    }
+  });
+
+  app.post("/api/team-highlights/:teamId/generate", async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid team ID" });
+      }
+      
+      const highlights = await storage.generateTeamHighlights(teamId);
+      res.json({ message: "Team highlights generated successfully", highlights });
+    } catch (error) {
+      console.error("Error generating team highlights:", error);
+      res.status(500).json({ error: "Failed to generate team highlights" });
+    }
+  });
+
+  app.post("/api/team-highlights", async (req, res) => {
+    try {
+      const highlight = await storage.createTeamHighlight(req.body);
+      res.status(201).json(highlight);
+    } catch (error) {
+      console.error("Error creating team highlight:", error);
+      res.status(500).json({ error: "Failed to create team highlight" });
+    }
+  });
+
+  app.delete("/api/team-highlights/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid highlight ID" });
+      }
+      
+      const deleted = await storage.deleteTeamHighlight(id);
+      if (deleted) {
+        res.json({ message: "Team highlight deleted successfully" });
+      } else {
+        res.status(404).json({ error: "Team highlight not found" });
+      }
+    } catch (error) {
+      console.error("Error deleting team highlight:", error);
+      res.status(500).json({ error: "Failed to delete team highlight" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

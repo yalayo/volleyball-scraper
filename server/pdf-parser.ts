@@ -1,4 +1,3 @@
-const pdfParse = require('pdf-parse');
 import axios from 'axios';
 import type { InsertMatchSet, InsertMatchLineup } from '@shared/schema';
 
@@ -46,8 +45,9 @@ export class VolleyballPDFParser {
         throw new Error(`Failed to download PDF: HTTP ${response.status}`);
       }
 
-      // Parse PDF content
-      const pdfData = await pdfParse(Buffer.from(response.data));
+      // Parse PDF content using dynamic import for CommonJS module
+      const pdfParseLib = (await import('pdf-parse')).default;
+      const pdfData = await pdfParseLib(Buffer.from(response.data));
       const text = pdfData.text;
 
       console.log(`PDF parsed successfully, text length: ${text.length}`);

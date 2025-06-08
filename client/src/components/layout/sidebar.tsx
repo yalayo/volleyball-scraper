@@ -8,7 +8,8 @@ import {
   FileText, 
   Settings,
   Play,
-  Clock
+  Clock,
+  Gamepad2
 } from "lucide-react";
 
 interface SidebarProps {

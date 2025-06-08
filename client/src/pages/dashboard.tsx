@@ -525,6 +525,9 @@ export default function Dashboard() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Games & Match Results</CardTitle>
+                    <div className="text-sm text-gray-600">
+                      {matches.length} volleyball matches with detailed set scores
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <DataTable 

@@ -29,20 +29,12 @@ export class VolleyballVideoGenerator {
     // Simple text-based video generator
   }
 
-  async generateMatchVideo(data: VideoGenerationData): Promise<string> {
-    const outputPath = path.join(process.cwd(), 'temp', `match_${data.match.id}_${Date.now()}.mp4`);
-    
-    // Ensure temp directory exists
-    const tempDir = path.dirname(outputPath);
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
-    }
-
-    // Generate a simple text-based video with match summary
-    return this.createSimpleTextVideo(data, outputPath);
+  async generateMatchVideo(data: VideoGenerationData): Promise<Buffer> {
+    // Generate video in memory and return as buffer
+    return this.createSimpleTextVideo(data);
   }
 
-  private async createSimpleTextVideo(data: VideoGenerationData, outputPath: string): Promise<string> {
+  private async createSimpleTextVideo(data: VideoGenerationData): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       // Create a simple colored background video with text overlay
       const matchTitle = `${data.match.homeTeamName} vs ${data.match.awayTeamName}`;
@@ -59,34 +51,36 @@ export class VolleyballVideoGenerator {
         `Location: ${data.match.location || 'Not specified'}`
       ].filter(Boolean).join('\\n\\n');
 
+      // Create temporary file
+      const tempPath = path.join('/tmp', `video_${Date.now()}.mp4`);
+
       ffmpeg()
         .input('color=c=blue:s=1920x1080:d=5')
         .inputFormat('lavfi')
         .videoFilters([
-          {
-            filter: 'drawtext',
-            options: {
-              text: textContent,
-              fontfile: '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
-              fontsize: 60,
-              fontcolor: 'white',
-              x: '(w-text_w)/2',
-              y: '(h-text_h)/2'
-            }
-          }
+          `drawtext=text='${textContent.replace(/'/g, "\\'")}':fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:fontsize=60:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2`
         ])
         .outputOptions([
           '-pix_fmt yuv420p',
           '-c:v libx264',
-          '-preset fast',
-          '-crf 23'
+          '-preset ultrafast',
+          '-crf 28'
         ])
-        .output(outputPath)
+        .output(tempPath)
         .on('end', () => {
           console.log('Video generation completed');
-          resolve(outputPath);
+          // Read the file and return as buffer
+          fs.readFile(tempPath, (err, data) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+            // Clean up temp file
+            fs.unlink(tempPath, () => {});
+            resolve(data);
+          });
         })
-        .on('error', (err) => {
+        .on('error', (err: Error) => {
           console.error('Video generation error:', err);
           reject(err);
         })

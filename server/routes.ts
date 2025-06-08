@@ -675,25 +675,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Generating video for match ${matchId}: ${videoData.match.homeTeamName} vs ${videoData.match.awayTeamName}`);
       
-      const videoPath = await videoGenerator.generateMatchVideo(videoData);
+      const videoBuffer = await videoGenerator.generateMatchVideo(videoData);
       
-      // Send video file
+      // Send video buffer directly
       res.setHeader('Content-Type', 'video/mp4');
       res.setHeader('Content-Disposition', `attachment; filename="match_${matchId}_summary.mp4"`);
+      res.setHeader('Content-Length', videoBuffer.length.toString());
       
-      const fs = await import('fs');
-      const stream = fs.createReadStream(videoPath);
-      
-      stream.on('end', () => {
-        // Clean up video file after sending
-        setTimeout(() => {
-          if (fs.existsSync(videoPath)) {
-            fs.unlinkSync(videoPath);
-          }
-        }, 5000);
-      });
-      
-      stream.pipe(res);
+      res.send(videoBuffer);
       
     } catch (error: any) {
       console.error("Error generating video:", error);

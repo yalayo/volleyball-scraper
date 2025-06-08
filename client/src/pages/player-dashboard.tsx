@@ -478,13 +478,13 @@ export default function PlayerDashboard() {
 
   // Fetch matches for the player's team
   const { data: matches = [], isLoading: matchesLoading } = useQuery({
-    queryKey: ['/api/player-dashboard/matches', player?.samsPlayerId],
+    queryKey: [`/api/player-dashboard/matches?samsPlayerId=${player?.samsPlayerId}`],
     enabled: !!player?.samsPlayerId && player.verificationStatus === 'verified'
   });
 
   // Fetch training sessions for the player's team
   const { data: trainingSessions = [], isLoading: sessionsLoading } = useQuery({
-    queryKey: ['/api/player-dashboard/training-sessions', player?.samsPlayerId],
+    queryKey: [`/api/player-dashboard/training-sessions?samsPlayerId=${player?.samsPlayerId}`],
     enabled: !!player?.samsPlayerId && player.verificationStatus === 'verified'
   });
 

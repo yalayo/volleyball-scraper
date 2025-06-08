@@ -50,9 +50,18 @@ export class VolleyballPDFParser {
       const pdfBuffer = Buffer.from(response.data);
       console.log(`Downloaded PDF buffer of ${pdfBuffer.length} bytes`);
       
-      // Extract volleyball match data from the PDF structure
+      // Parse actual PDF content using pdf-parse
       console.log(`Processing volleyball scoresheet from SAMS system`);
-      return this.createStructuredVolleyballData(pdfUrl);
+      const pdfParse = await import('pdf-parse');
+      const pdfData = await pdfParse.default(pdfBuffer);
+      
+      if (pdfData && pdfData.text) {
+        console.log(`Extracted ${pdfData.text.length} characters from PDF`);
+        return this.extractMatchData(pdfData.text);
+      } else {
+        console.log('No text content extracted from PDF');
+        return null;
+      }
       
     } catch (error) {
       console.error(`Error parsing PDF from ${pdfUrl}:`, error);
@@ -165,9 +174,32 @@ export class VolleyballPDFParser {
     let homeTeamName = 'Unknown Home Team';
     let awayTeamName = 'Unknown Away Team';
 
-    // Look for team names in common volleyball scoresheet patterns
+    // Look for team names in SAMS volleyball scoresheet patterns
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
+      
+      // SAMS scoresheets often have team names in format "Team A vs Team B" or separated by specific patterns
+      const vsMatch = line.match(/(.+?)\s+(?:vs|gegen|—|-)\s+(.+)/i);
+      if (vsMatch) {
+        homeTeamName = vsMatch[1].trim();
+        awayTeamName = vsMatch[2].trim();
+        break;
+      }
+      
+      // Look for team names in table headers or match info sections
+      if (line.toLowerCase().includes('mannschaft') || line.toLowerCase().includes('team')) {
+        const nextLines = lines.slice(i, i + 5);
+        for (const nextLine of nextLines) {
+          if (nextLine.length > 3 && !nextLine.match(/^\d+$/) && !nextLine.toLowerCase().includes('satz')) {
+            if (homeTeamName === 'Unknown Home Team') {
+              homeTeamName = nextLine.trim();
+            } else if (awayTeamName === 'Unknown Away Team') {
+              awayTeamName = nextLine.trim();
+              break;
+            }
+          }
+        }
+      }
       
       // Pattern: "Team A vs Team B" or "Team A - Team B"
       const vsMatch = line.match(/^(.+?)\s+(?:vs|gegen|-)\s+(.+?)$/i);

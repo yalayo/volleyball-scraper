@@ -612,6 +612,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete match sets for a specific match (admin only)
+  app.delete("/api/matches/:id/sets", requireAdmin, async (req: Request, res: Response) => {
+    const matchId = parseInt(req.params.id);
+    
+    try {
+      await storage.deleteMatchSets(matchId);
+      await storage.deleteMatchLineups(matchId);
+      res.json({ message: "Match data cleared successfully" });
+    } catch (error) {
+      console.error("Error deleting match data:", error);
+      res.status(500).json({ message: "Failed to delete match data" });
+    }
+  });
+
   // Team Highlights endpoints
   app.get("/api/team-highlights", async (req, res) => {
     try {

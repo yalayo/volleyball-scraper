@@ -671,7 +671,8 @@ function parseMatchResult(
   resultText: string,
   dateText: string,
   seriesId: string,
-  leagueId: number
+  leagueDbId: number,
+  pdfUrl?: string | null
 ): InsertMatch | null {
   try {
     // Parse different result formats
@@ -768,13 +769,80 @@ function parseMatchResult(
       setResults,
       matchDate,
       status: 'completed',
-      leagueId,
+      leagueId: leagueDbId,
       seriesId,
+      scoresheetPdfUrl: pdfUrl || null,
       homeTeamId: null, // Will be updated when teams are linked
       awayTeamId: null,
+      location: null,
+      samsUrl: null
     };
   } catch (error) {
     console.error('Error parsing match result:', error);
+    return null;
+  }
+}
+
+// Process PDF scoresheet and extract detailed match data
+async function processPDFScoresheet(
+  matchId: number,
+  pdfUrl: string,
+  storageInstance: IStorage
+): Promise<void> {
+  try {
+    console.log(`Processing PDF scoresheet for match ${matchId}: ${pdfUrl}`);
+    
+    // Parse PDF to extract detailed match information
+    const pdfData = await pdfParser.parsePDFFromUrl(pdfUrl);
+    
+    if (!pdfData) {
+      console.log(`Failed to parse PDF data from ${pdfUrl}`);
+      return;
+    }
+
+    console.log(`Successfully extracted PDF data: ${pdfData.sets.length} sets, ${pdfData.lineups.length} lineups`);
+
+    // Get team IDs for lineup processing
+    const homeTeamId = await getTeamIdByName(pdfData.homeTeamName, storageInstance);
+    const awayTeamId = await getTeamIdByName(pdfData.awayTeamName, storageInstance);
+
+    // Save match sets with detailed information
+    for (const setData of pdfData.sets) {
+      setData.matchId = matchId;
+      await storageInstance.createMatchSet(setData);
+    }
+
+    // Save lineups with team associations
+    for (const lineupData of pdfData.lineups) {
+      lineupData.matchId = matchId;
+      
+      // Determine team ID based on team name proximity
+      if (pdfData.homeTeamName && homeTeamId) {
+        lineupData.teamId = homeTeamId;
+      } else if (pdfData.awayTeamName && awayTeamId) {
+        lineupData.teamId = awayTeamId;
+      }
+      
+      if (lineupData.teamId) {
+        await storageInstance.createMatchLineup(lineupData);
+      }
+    }
+
+    console.log(`Successfully processed PDF data for match ${matchId}`);
+
+  } catch (error) {
+    console.error(`Error processing PDF scoresheet for match ${matchId}:`, error);
+  }
+}
+
+// Helper function to get team ID by name
+async function getTeamIdByName(teamName: string, storageInstance: IStorage): Promise<number | null> {
+  try {
+    const teams = await storageInstance.getTeams();
+    const team = teams.find(t => t.name === teamName);
+    return team?.id || null;
+  } catch (error) {
+    console.error(`Error finding team by name "${teamName}":`, error);
     return null;
   }
 }
@@ -1156,8 +1224,14 @@ export async function scrapeVolleyballData(
           if (homeTeam) matchData.homeTeamId = homeTeam.dbId;
           if (awayTeam) matchData.awayTeamId = awayTeam.dbId;
           
-          await storageInstance.createMatch(matchData);
+          const createdMatch = await storageInstance.createMatch(matchData);
           matchCount++;
+          
+          // Process PDF scoresheet if URL is available
+          if (matchData.scoresheetPdfUrl && createdMatch.id) {
+            console.log(`Processing PDF for match ${createdMatch.id}: ${matchData.scoresheetPdfUrl}`);
+            await processPDFScoresheet(createdMatch.id, matchData.scoresheetPdfUrl, storageInstance);
+          }
           
           // Update team statistics
           if (homeTeam && awayTeam) {

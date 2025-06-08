@@ -659,14 +659,17 @@ export default function AdminDashboard() {
               <CardContent className="space-y-6">
                 <div className="flex gap-4">
                   <div className="flex-1">
-                    <Label htmlFor="playerAccountId">Player Account ID</Label>
+                    <Label htmlFor="playerAccountId">Player Account ID or SAMS ID</Label>
                     <Input
                       id="playerAccountId"
-                      placeholder="Enter player account ID (e.g., 123)"
+                      placeholder="Enter player account ID (e.g., 4) or SAMS ID (e.g., 75996241)"
                       value={playerAccountId}
                       onChange={(e) => setPlayerAccountId(e.target.value)}
                       disabled={fetchPlayerMutation.isPending}
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Player Account ID: Internal ID (usually single digits). SAMS ID: 8-digit volleyball system ID.
+                    </p>
                   </div>
                   <div className="flex items-end">
                     <Button 

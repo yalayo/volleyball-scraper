@@ -927,10 +927,7 @@ export class DatabaseStorage implements IStorage {
     return account;
   }
 
-  async getPlayerAccountBySamsId(samsPlayerId: string): Promise<PlayerAccount | undefined> {
-    const [account] = await db.select().from(playerAccounts).where(eq(playerAccounts.samsPlayerId, samsPlayerId));
-    return account;
-  }
+
 
   async getPlayerAccount(id: number): Promise<PlayerAccount | undefined> {
     const [account] = await db.select().from(playerAccounts).where(eq(playerAccounts.id, id));
@@ -1202,6 +1199,44 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(playerAccounts)
       .where(eq(playerAccounts.id, playerAccountId));
+
+    if (!account) {
+      return undefined;
+    }
+
+    // Get associated player data if available
+    let player = undefined;
+    if (account.samsPlayerId) {
+      const [playerData] = await db
+        .select()
+        .from(players)
+        .where(eq(players.playerId, account.samsPlayerId));
+
+      if (playerData) {
+        // Get team data
+        const [team] = await db
+          .select()
+          .from(teams)
+          .where(eq(teams.id, playerData.teamId));
+
+        player = {
+          ...playerData,
+          team: team || undefined
+        };
+      }
+    }
+
+    return {
+      ...account,
+      player
+    };
+  }
+
+  async getPlayerAccountBySamsId(samsId: string): Promise<(PlayerAccount & { player?: Player & { team?: Team } }) | undefined> {
+    const [account] = await db
+      .select()
+      .from(playerAccounts)
+      .where(eq(playerAccounts.samsPlayerId, samsId));
 
     if (!account) {
       return undefined;

@@ -1268,14 +1268,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin player verification routes
   app.get('/api/player-accounts/:id', requireAdmin, async (req, res) => {
     try {
-      const playerAccountId = parseInt(req.params.id);
-      
-      if (isNaN(playerAccountId)) {
-        return res.status(400).json({ message: "Invalid player account ID" });
+      const idParam = req.params.id;
+      let playerAccount;
+
+      // Try to parse as number (Player Account ID)
+      const playerAccountId = parseInt(idParam);
+      if (!isNaN(playerAccountId)) {
+        playerAccount = await storage.getPlayerAccountById(playerAccountId);
       }
 
-      const playerAccount = await storage.getPlayerAccountById(playerAccountId);
-      
+      // If not found and looks like a SAMS ID (8+ digits), try SAMS lookup
+      if (!playerAccount && idParam.length >= 8 && /^\d+$/.test(idParam)) {
+        playerAccount = await storage.getPlayerAccountBySamsId(idParam);
+      }
+
       if (!playerAccount) {
         return res.status(404).json({ message: "Player account not found" });
       }

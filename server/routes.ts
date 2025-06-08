@@ -463,6 +463,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Player login endpoint
+  app.post('/api/player-accounts/login', async (req, res) => {
+    try {
+      const { email, passwordHash } = req.body;
+      
+      if (!email || !passwordHash) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+
+      // Find player account by email
+      const account = await storage.getPlayerAccountByEmail(email);
+      if (!account) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+
+      // Verify password (simple comparison - in production use proper bcrypt)
+      if (account.passwordHash !== passwordHash) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+
+      // Update last login
+      await storage.updatePlayerAccountLastLogin(account.id);
+
+      // Return success response
+      const { passwordHash: _, ...playerData } = account;
+      res.json({
+        success: true,
+        player: playerData
+      });
+    } catch (error) {
+      console.error("Error during login:", error);
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  // Player dashboard - get matches for player's team
+  app.get('/api/player-dashboard/matches/:samsPlayerId', async (req, res) => {
+    try {
+      const { samsPlayerId } = req.params;
+      
+      // Find player by SAMS ID to get their team
+      const player = await storage.getPlayerBySamsId(samsPlayerId);
+      if (!player) {
+        return res.status(404).json({ message: "Player not found" });
+      }
+
+      // Get matches for the player's team
+      const matches = await storage.getMatchesByTeam(player.teamId);
+      res.json(matches);
+    } catch (error) {
+      console.error("Error fetching player matches:", error);
+      res.status(500).json({ message: "Failed to fetch matches" });
+    }
+  });
+
+  // Player dashboard - get training sessions (mock data for now)
+  app.get('/api/player-dashboard/training-sessions/:samsPlayerId', async (req, res) => {
+    try {
+      // Return sample training sessions
+      const trainingSessions = [
+        {
+          id: 1,
+          title: "Spike Training",
+          description: "Practice attacking techniques and timing",
+          sessionDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+          location: "Gymnasium Hall A",
+          organizer: "Coach Weber",
+          participants: ["Max Müller", "Lisa Schmidt"],
+          maxParticipants: 8,
+          isJoined: false
+        },
+        {
+          id: 2,
+          title: "Defense Drills",
+          description: "Improve blocking and digging skills",
+          sessionDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+          location: "Training Center",
+          organizer: "Team Captain",
+          participants: ["Anna Weber", "Tom Fischer", "Nina Bauer"],
+          maxParticipants: 6,
+          isJoined: true
+        }
+      ];
+      
+      res.json(trainingSessions);
+    } catch (error) {
+      console.error("Error fetching training sessions:", error);
+      res.status(500).json({ message: "Failed to fetch training sessions" });
+    }
+  });
+
+  // Join training session
+  app.post('/api/player-dashboard/join-training', async (req, res) => {
+    try {
+      const { sessionId, playerId } = req.body;
+      
+      // In a real implementation, this would update the training session participants
+      console.log(`Player ${playerId} joined training session ${sessionId}`);
+      
+      res.json({ success: true, message: "Successfully joined training session" });
+    } catch (error) {
+      console.error("Error joining training session:", error);
+      res.status(500).json({ message: "Failed to join training session" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -83,6 +83,10 @@ export interface IStorage {
   verifyPlayerAccount(id: number, playerId: number): Promise<PlayerAccount | undefined>;
   updatePlayerAccountLastLogin(id: number): Promise<void>;
   validateSamsPlayerId(samsPlayerId: string): Promise<boolean>;
+  
+  // Player dashboard methods
+  getPlayerBySamsId(samsPlayerId: string): Promise<Player | undefined>;
+  getMatchesByTeam(teamId: number): Promise<(Match & { homeTeam?: Team; awayTeam?: Team; league?: League })[]>;
 }
 
 export class DatabaseStorage implements IStorage {

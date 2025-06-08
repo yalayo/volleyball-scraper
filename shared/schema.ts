@@ -97,6 +97,32 @@ export const scrapeLogs = pgTable("scrape_logs", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const teamHighlights = pgTable("team_highlights", {
+  id: serial("id").primaryKey(),
+  teamId: integer("team_id").references(() => teams.id).notNull(),
+  highlightType: text("highlight_type").notNull(), // 'win_streak', 'comeback', 'dominant_performance', 'milestone'
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  matchId: integer("match_id").references(() => matches.id),
+  value: integer("value"), // streak count, point difference, etc.
+  dateAchieved: timestamp("date_achieved").notNull(),
+  priority: integer("priority").default(1), // 1-5, higher is more important
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const userTeamPreferences = pgTable("user_team_preferences", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  teamId: integer("team_id").references(() => teams.id).notNull(),
+  isFavorite: boolean("is_favorite").default(false),
+  notificationEnabled: boolean("notification_enabled").default(false),
+  highlightPreferences: text("highlight_preferences"), // JSON string of preferred highlight types
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const leaguesRelations = relations(leagues, ({ many }) => ({
   teams: many(teams),
@@ -111,6 +137,8 @@ export const teamsRelations = relations(teams, ({ one, many }) => ({
   homeMatches: many(matches, { relationName: "homeTeam" }),
   awayMatches: many(matches, { relationName: "awayTeam" }),
   stats: many(teamStats),
+  highlights: many(teamHighlights),
+  userPreferences: many(userTeamPreferences),
 }));
 
 export const playersRelations = relations(players, ({ one }) => ({
@@ -145,6 +173,28 @@ export const teamStatsRelations = relations(teamStats, ({ one }) => ({
   league: one(leagues, {
     fields: [teamStats.leagueId],
     references: [leagues.id],
+  }),
+}));
+
+export const teamHighlightsRelations = relations(teamHighlights, ({ one }) => ({
+  team: one(teams, {
+    fields: [teamHighlights.teamId],
+    references: [teams.id],
+  }),
+  match: one(matches, {
+    fields: [teamHighlights.matchId],
+    references: [matches.id],
+  }),
+}));
+
+export const userTeamPreferencesRelations = relations(userTeamPreferences, ({ one }) => ({
+  user: one(users, {
+    fields: [userTeamPreferences.userId],
+    references: [users.id],
+  }),
+  team: one(teams, {
+    fields: [userTeamPreferences.teamId],
+    references: [teams.id],
   }),
 }));
 
@@ -210,3 +260,21 @@ export type Match = typeof matches.$inferSelect;
 
 export type InsertTeamStats = z.infer<typeof insertTeamStatsSchema>;
 export type TeamStats = typeof teamStats.$inferSelect;
+
+export const insertTeamHighlightSchema = createInsertSchema(teamHighlights).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertUserTeamPreferenceSchema = createInsertSchema(userTeamPreferences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTeamHighlight = z.infer<typeof insertTeamHighlightSchema>;
+export type TeamHighlight = typeof teamHighlights.$inferSelect;
+
+export type InsertUserTeamPreference = z.infer<typeof insertUserTeamPreferenceSchema>;
+export type UserTeamPreference = typeof userTeamPreferences.$inferSelect;

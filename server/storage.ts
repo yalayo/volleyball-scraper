@@ -1,4 +1,4 @@
-import { users, leagues, teams, players, scrapeLogs, matches, teamStats, type User, type InsertUser, type League, type InsertLeague, type Team, type InsertTeam, type Player, type InsertPlayer, type ScrapeLog, type InsertScrapeLog, type Match, type InsertMatch, type TeamStats, type InsertTeamStats } from "@shared/schema";
+import { users, leagues, teams, players, scrapeLogs, matches, teamStats, teamHighlights, userTeamPreferences, type User, type InsertUser, type League, type InsertLeague, type Team, type InsertTeam, type Player, type InsertPlayer, type ScrapeLog, type InsertScrapeLog, type Match, type InsertMatch, type TeamStats, type InsertTeamStats, type TeamHighlight, type InsertTeamHighlight, type UserTeamPreference, type InsertUserTeamPreference } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, count, sql } from "drizzle-orm";
 
@@ -60,6 +60,21 @@ export interface IStorage {
     totalSeries: number;
     lastScrapeTime: string | null;
   }>;
+
+  // Team Highlights methods
+  getTeamHighlights(teamId: number): Promise<(TeamHighlight & { team?: Team; match?: Match })[]>;
+  getAllTeamHighlights(): Promise<(TeamHighlight & { team?: Team; match?: Match })[]>;
+  createTeamHighlight(highlight: InsertTeamHighlight): Promise<TeamHighlight>;
+  updateTeamHighlight(id: number, highlight: Partial<InsertTeamHighlight>): Promise<TeamHighlight | undefined>;
+  deleteTeamHighlight(id: number): Promise<boolean>;
+  generateTeamHighlights(teamId: number): Promise<TeamHighlight[]>;
+
+  // User Team Preferences methods
+  getUserTeamPreferences(userId: number): Promise<(UserTeamPreference & { team?: Team })[]>;
+  getUserTeamPreference(userId: number, teamId: number): Promise<UserTeamPreference | undefined>;
+  createUserTeamPreference(preference: InsertUserTeamPreference): Promise<UserTeamPreference>;
+  updateUserTeamPreference(id: number, preference: Partial<InsertUserTeamPreference>): Promise<UserTeamPreference | undefined>;
+  deleteUserTeamPreference(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {

@@ -16,6 +16,7 @@ import PlayerDashboard from "@/pages/player-dashboard";
 import AdminLogin from "@/pages/admin-login";
 import AdminDashboard from "@/pages/admin-dashboard";
 import MatchDetails from "@/pages/match-details";
+import SummerLeagues from "@/pages/summer-leagues";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -40,6 +41,7 @@ function Router() {
       <Route path="/players" component={PlayersPage}/>
       <Route path="/teams" component={TeamsPage}/>
       <Route path="/leagues" component={LeaguesPage}/>
+      <Route path="/summer-leagues" component={SummerLeagues}/>
       <Route path="/highlights" component={HighlightsPage}/>
       
       <Route component={NotFound} />

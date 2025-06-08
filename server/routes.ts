@@ -1086,6 +1086,185 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Summer league routes
+  app.get('/api/summer-leagues', async (req, res) => {
+    try {
+      const leagues = await storage.getSummerLeagues();
+      res.json(leagues);
+    } catch (error) {
+      console.error("Error fetching summer leagues:", error);
+      res.status(500).json({ message: "Failed to fetch summer leagues" });
+    }
+  });
+
+  app.post('/api/summer-leagues', async (req, res) => {
+    try {
+      const { name, description, season, maxTeams, location, startDate, endDate, creatorId } = req.body;
+      
+      if (!name || !season || !creatorId) {
+        return res.status(400).json({ message: "Name, season, and creator ID are required" });
+      }
+
+      const league = await storage.createSummerLeague({
+        name,
+        description,
+        season,
+        maxTeams: maxTeams || 16,
+        location,
+        startDate: startDate ? new Date(startDate) : null,
+        endDate: endDate ? new Date(endDate) : null,
+        creatorId,
+        registrationOpen: true,
+        status: 'upcoming'
+      });
+
+      res.status(201).json(league);
+    } catch (error) {
+      console.error("Error creating summer league:", error);
+      res.status(500).json({ message: "Failed to create summer league" });
+    }
+  });
+
+  app.get('/api/summer-leagues/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const league = await storage.getSummerLeague(id);
+      
+      if (!league) {
+        return res.status(404).json({ message: "Summer league not found" });
+      }
+      
+      res.json(league);
+    } catch (error) {
+      console.error("Error fetching summer league:", error);
+      res.status(500).json({ message: "Failed to fetch summer league" });
+    }
+  });
+
+  // Summer team application routes
+  app.get('/api/summer-applications', async (req, res) => {
+    try {
+      const { summerLeagueId, captainId } = req.query;
+      
+      let applications;
+      if (summerLeagueId) {
+        applications = await storage.getSummerTeamApplications(parseInt(summerLeagueId as string));
+      } else {
+        applications = await storage.getSummerTeamApplications();
+      }
+      
+      // Filter by captain if specified
+      if (captainId) {
+        applications = applications.filter(app => app.captainId === parseInt(captainId as string));
+      }
+      
+      res.json(applications);
+    } catch (error) {
+      console.error("Error fetching summer applications:", error);
+      res.status(500).json({ message: "Failed to fetch summer applications" });
+    }
+  });
+
+  app.post('/api/summer-applications', async (req, res) => {
+    try {
+      const { teamName, contactEmail, contactPhone, summerLeagueId, captainId } = req.body;
+      
+      if (!teamName || !contactEmail || !summerLeagueId || !captainId) {
+        return res.status(400).json({ message: "Team name, contact email, league ID, and captain ID are required" });
+      }
+
+      const application = await storage.createSummerTeamApplication({
+        teamName,
+        contactEmail,
+        contactPhone,
+        summerLeagueId,
+        captainId,
+        status: 'pending'
+      });
+
+      res.status(201).json(application);
+    } catch (error) {
+      console.error("Error creating summer application:", error);
+      res.status(500).json({ message: "Failed to create summer application" });
+    }
+  });
+
+  // Friendly match request routes
+  app.get('/api/friendly-matches', async (req, res) => {
+    try {
+      const { teamId } = req.query;
+      const requests = await storage.getFriendlyMatchRequests(teamId ? parseInt(teamId as string) : undefined);
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching friendly match requests:", error);
+      res.status(500).json({ message: "Failed to fetch friendly match requests" });
+    }
+  });
+
+  app.post('/api/friendly-matches', async (req, res) => {
+    try {
+      const { requestingTeamId, targetTeamId, requestingTrainerId, proposedDate, location, message } = req.body;
+      
+      if (!requestingTeamId || !targetTeamId || !requestingTrainerId) {
+        return res.status(400).json({ message: "Requesting team, target team, and trainer are required" });
+      }
+
+      const request = await storage.createFriendlyMatchRequest({
+        requestingTeamId,
+        targetTeamId,
+        requestingTrainerId,
+        proposedDate: proposedDate ? new Date(proposedDate) : null,
+        location,
+        message,
+        status: 'pending'
+      });
+
+      res.status(201).json(request);
+    } catch (error) {
+      console.error("Error creating friendly match request:", error);
+      res.status(500).json({ message: "Failed to create friendly match request" });
+    }
+  });
+
+  // Training invitation routes
+  app.get('/api/training-invitations', async (req, res) => {
+    try {
+      const { playerId, trainerId } = req.query;
+      const invitations = await storage.getTrainingInvitations(
+        playerId ? parseInt(playerId as string) : undefined,
+        trainerId ? parseInt(trainerId as string) : undefined
+      );
+      res.json(invitations);
+    } catch (error) {
+      console.error("Error fetching training invitations:", error);
+      res.status(500).json({ message: "Failed to fetch training invitations" });
+    }
+  });
+
+  app.post('/api/training-invitations', async (req, res) => {
+    try {
+      const { trainerId, invitedPlayerId, sessionDate, location, message } = req.body;
+      
+      if (!trainerId || !invitedPlayerId) {
+        return res.status(400).json({ message: "Trainer and invited player are required" });
+      }
+
+      const invitation = await storage.createTrainingInvitation({
+        trainerId,
+        invitedPlayerId,
+        sessionDate: sessionDate ? new Date(sessionDate) : null,
+        location,
+        message,
+        status: 'pending'
+      });
+
+      res.status(201).json(invitation);
+    } catch (error) {
+      console.error("Error creating training invitation:", error);
+      res.status(500).json({ message: "Failed to create training invitation" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

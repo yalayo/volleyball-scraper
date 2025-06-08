@@ -475,26 +475,57 @@ async function scrapeMatchResults(
         let awayTeamName = '';
         let dateText = '';
         
-        // Enhanced date extraction - look for dates in multiple formats and locations
-        $row.find('td, th').each((_, cell) => {
-          const $cell = $(cell);
-          const cellText = $cell.text().trim();
-          
-          // Look for German date format DD.MM.YYYY or DD.MM.YY
-          const dateMatch = cellText.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
-          if (dateMatch && !dateText) {
-            dateText = cellText;
-            return;
-          }
-          
-          // Look for other date formats
-          const altDateMatch = cellText.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
-          if (altDateMatch && !dateText) {
-            // Convert to German format for consistent parsing
-            dateText = `${altDateMatch[1]}.${altDateMatch[2]}.${altDateMatch[3]}`;
-            return;
+        // Enhanced date extraction - look for dates in table headers and data cells
+        const $table = $row.closest('table');
+        
+        // First, check if there's a date column header to identify the column index
+        let dateColumnIndex = -1;
+        $table.find('th, thead td').each((index, header) => {
+          const headerText = $(header).text().trim().toLowerCase();
+          if (headerText.includes('datum') || headerText.includes('date') || headerText.includes('termin')) {
+            dateColumnIndex = index;
+            return false; // Break the loop
           }
         });
+        
+        // If we found a date column, extract from that specific column
+        if (dateColumnIndex >= 0) {
+          const dateCell = $row.find('td').eq(dateColumnIndex);
+          const cellText = dateCell.text().trim();
+          const dateMatch = cellText.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
+          if (dateMatch) {
+            dateText = cellText;
+          }
+        } else {
+          // Fallback: scan all cells for date patterns
+          $row.find('td, th').each((_, cell) => {
+            const $cell = $(cell);
+            const cellText = $cell.text().trim();
+            
+            // Look for German date format DD.MM.YYYY or DD.MM.YY
+            const dateMatch = cellText.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
+            if (dateMatch && !dateText) {
+              // Validate it's a reasonable date (not jersey numbers or scores)
+              const day = parseInt(dateMatch[1]);
+              const month = parseInt(dateMatch[2]);
+              if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+                dateText = cellText;
+                return false; // Break the loop
+              }
+            }
+            
+            // Look for other date formats
+            const altDateMatch = cellText.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+            if (altDateMatch && !dateText) {
+              const day = parseInt(altDateMatch[1]);
+              const month = parseInt(altDateMatch[2]);
+              if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+                dateText = `${altDateMatch[1]}.${altDateMatch[2]}.${altDateMatch[3]}`;
+                return false; // Break the loop
+              }
+            }
+          });
+        }
         
         // Look for teams based on volleyball table structure
         // Usually the team name is in a cell adjacent to the result cell

@@ -17,7 +17,11 @@ import {
   AlertCircle,
   Mail,
   Sun,
-  Plus
+  Plus,
+  User,
+  Flag,
+  Hash,
+  IdCard
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -494,6 +498,12 @@ export default function PlayerDashboard() {
     enabled: !!player?.samsPlayerId && player.verificationStatus === 'verified'
   });
 
+  // Fetch teammates for the player's team
+  const { data: teammates = [], isLoading: teammatesLoading } = useQuery({
+    queryKey: [`/api/player-dashboard/teammates?samsPlayerId=${player?.samsPlayerId}`],
+    enabled: !!player?.samsPlayerId && player.verificationStatus === 'verified'
+  });
+
   // Join training session mutation
   const joinSessionMutation = useMutation({
     mutationFn: async (sessionId: number) => {
@@ -840,11 +850,69 @@ export default function PlayerDashboard() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-center py-8">
-                      <Users className="mx-auto h-12 w-12 text-gray-400" />
-                      <p className="mt-2 text-gray-600">Teammate directory coming soon</p>
-                      <p className="text-sm text-gray-500">Connect with your team members and organize training sessions</p>
-                    </div>
+                    {teammatesLoading ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                        <p className="mt-2 text-gray-600">Loading teammates...</p>
+                      </div>
+                    ) : teammates.length === 0 ? (
+                      <div className="text-center py-8">
+                        <Users className="mx-auto h-12 w-12 text-gray-400" />
+                        <p className="mt-2 text-gray-600">No teammates found</p>
+                        <p className="text-sm text-gray-500">You're the only player in this team or teammates haven't been added yet</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {(teammates as Player[]).map((teammate: Player) => (
+                          <div key={teammate.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-4">
+                                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <User className="h-5 w-5 text-blue-600" />
+                                  </div>
+                                  <div>
+                                    <h3 className="font-semibold text-lg">{teammate.name}</h3>
+                                    <div className="space-y-1 text-sm text-gray-600">
+                                      {teammate.position && (
+                                        <div className="flex items-center">
+                                          <Trophy className="mr-1 h-4 w-4" />
+                                          Position: {teammate.position}
+                                        </div>
+                                      )}
+                                      {teammate.nationality && (
+                                        <div className="flex items-center">
+                                          <Flag className="mr-1 h-4 w-4" />
+                                          {teammate.nationality}
+                                        </div>
+                                      )}
+                                      {teammate.jerseyNumber && (
+                                        <div className="flex items-center">
+                                          <Hash className="mr-1 h-4 w-4" />
+                                          Jersey #{teammate.jerseyNumber}
+                                        </div>
+                                      )}
+                                      <div className="flex items-center">
+                                        <IdCard className="mr-1 h-4 w-4" />
+                                        SAMS ID: {teammate.playerId}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <Badge 
+                                  variant={teammate.isActive ? 'default' : 'secondary'}
+                                  className="mb-2"
+                                >
+                                  {teammate.isActive ? 'Active' : 'Inactive'}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>

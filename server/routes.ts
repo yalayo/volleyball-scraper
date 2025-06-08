@@ -977,6 +977,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Player dashboard - get teammates for player's team
+  app.get('/api/player-dashboard/teammates', async (req, res) => {
+    try {
+      const { samsPlayerId } = req.query;
+      
+      console.log("Teammates API called with samsPlayerId:", samsPlayerId);
+      
+      if (!samsPlayerId) {
+        return res.status(400).json({ message: "SAMS Player ID is required" });
+      }
+      
+      // Find player by SAMS ID to get their team
+      const player = await storage.getPlayerBySamsId(samsPlayerId as string);
+      console.log("Player found for teammates:", player);
+      
+      if (!player) {
+        return res.status(404).json({ message: "Player not found" });
+      }
+
+      // Get teammates if player has a team
+      if (!player.teamId) {
+        console.log("Player has no teamId for teammates");
+        return res.json([]);
+      }
+      
+      console.log("Fetching teammates for teamId:", player.teamId);
+      const allTeamPlayers = await storage.getPlayersByTeam(player.teamId);
+      
+      // Filter out the current player from the teammates list
+      const teammates = allTeamPlayers.filter(teammate => teammate.playerId !== player.playerId);
+      console.log("Teammates found:", teammates.length);
+      res.json(teammates);
+    } catch (error) {
+      console.error("Error fetching teammates:", error);
+      res.status(500).json({ message: "Failed to fetch teammates" });
+    }
+  });
+
   // Player dashboard - get training sessions for player's team
   app.get('/api/player-dashboard/training-sessions', async (req, res) => {
     try {

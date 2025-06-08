@@ -26,8 +26,7 @@ export default function VerificationGate({ playerAccount, onVerified }: Verifica
 
   // Get verification progress
   const { data: progress, isLoading: progressLoading } = useQuery({
-    queryKey: ['/api/verification-progress'],
-    queryFn: () => apiRequest(`/api/verification-progress?playerAccountId=${playerAccount?.id}`),
+    queryKey: [`/api/verification-progress?playerAccountId=${playerAccount?.id}`],
     enabled: !!playerAccount?.id,
     retry: false,
   });
@@ -52,7 +51,15 @@ export default function VerificationGate({ playerAccount, onVerified }: Verifica
 
     setIsLoadingPlayerInfo(true);
     try {
-      const info = await apiRequest(`/api/player-info/${samsId}`);
+      const response = await fetch(`/api/player-info/${samsId}`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      
+      const info = await response.json();
       setPlayerInfo(info);
     } catch (error: any) {
       setPlayerInfo(null);
@@ -71,11 +78,25 @@ export default function VerificationGate({ playerAccount, onVerified }: Verifica
   // Verify another player mutation
   const verifyPlayerMutation = useMutation({
     mutationFn: async (targetSamsId: string) => {
-      return apiRequest('/api/verify-player', 'POST', {
-        verifierPlayerId: playerAccount.id,
-        targetSamsId,
-        isTrainer: false
+      const response = await fetch('/api/verify-player', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          verifierPlayerId: playerAccount.id,
+          targetSamsId,
+          isTrainer: false
+        }),
+        credentials: 'include'
       });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`${response.status}: ${errorText}`);
+      }
+      
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -109,12 +130,13 @@ export default function VerificationGate({ playerAccount, onVerified }: Verifica
   }
 
   // If fully verified, allow access
-  if (progress?.isFullyVerified) {
+  if (progress && typeof progress === 'object' && 'isFullyVerified' in progress && progress.isFullyVerified) {
     onVerified();
     return null;
   }
 
-  const verificationPercentage = progress ? Math.round((progress.teammateVerifications / progress.totalNeeded) * 100) : 0;
+  const progressData = progress && typeof progress === 'object' ? progress as any : null;
+  const verificationPercentage = progressData ? Math.round((progressData.teammateVerifications / progressData.totalNeeded) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">

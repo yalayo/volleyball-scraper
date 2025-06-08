@@ -27,6 +27,9 @@ export default function GamesPage() {
     queryKey: ["/api/matches"],
   });
 
+  // Debug: Log the first match to see the data structure
+  console.log("First match:", matches[0]);
+
   const { data: leagues = [] } = useQuery<League[]>({
     queryKey: ["/api/leagues"],
   });
@@ -37,14 +40,14 @@ export default function GamesPage() {
 
   // Filter matches based on selected criteria
   const filteredMatches = matches.filter(match => {
-    if (selectedLeague !== "all" && match.leagueId !== parseInt(selectedLeague)) return false;
-    if (selectedTeam !== "all" && !match.homeTeamName.includes(selectedTeam) && !match.awayTeamName.includes(selectedTeam)) return false;
-    if (homeTeam !== "all" && !match.homeTeamName.includes(homeTeam)) return false;
-    if (awayTeam !== "all" && !match.awayTeamName.includes(awayTeam)) return false;
+    if (selectedLeague !== "all" && match.league?.id !== parseInt(selectedLeague)) return false;
+    if (selectedTeam !== "all" && !match.homeTeam?.name.includes(selectedTeam) && !match.awayTeam?.name.includes(selectedTeam)) return false;
+    if (homeTeam !== "all" && !match.homeTeam?.name.includes(homeTeam)) return false;
+    if (awayTeam !== "all" && !match.awayTeam?.name.includes(awayTeam)) return false;
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
-      return match.homeTeamName.toLowerCase().includes(search) || 
-             match.awayTeamName.toLowerCase().includes(search) ||
+      return match.homeTeam?.name.toLowerCase().includes(search) || 
+             match.awayTeam?.name.toLowerCase().includes(search) ||
              (match.setResults && match.setResults.toLowerCase().includes(search));
     }
     return true;

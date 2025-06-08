@@ -304,67 +304,30 @@ export class DatabaseStorage implements IStorage {
 
   // Match methods implementation
   async getMatches(): Promise<(Match & { homeTeam?: Team; awayTeam?: Team; league?: League })[]> {
-    const result = await db
-      .select({
-        id: matches.id,
-        matchId: matches.matchId,
-        homeTeamId: matches.homeTeamId,
-        awayTeamId: matches.awayTeamId,
-        homeTeamName: matches.homeTeamName,
-        awayTeamName: matches.awayTeamName,
-        homeScore: matches.homeScore,
-        awayScore: matches.awayScore,
-        homeSets: matches.homeSets,
-        awaySets: matches.awaySets,
-        setResults: matches.setResults,
-        matchDate: matches.matchDate,
-        status: matches.status,
-        leagueId: matches.leagueId,
-        seriesId: matches.seriesId,
-        createdAt: matches.createdAt,
-        updatedAt: matches.updatedAt,
-        homeTeam: {
-          id: teams.id,
-          name: teams.name,
-          location: teams.location,
-        },
-        awayTeam: {
-          id: teams.id,
-          name: teams.name,
-          location: teams.location,
-        },
-        league: {
-          id: leagues.id,
-          name: leagues.name,
-          category: leagues.category,
-        },
-      })
+    const matchesData = await db
+      .select()
       .from(matches)
-      .leftJoin(teams, eq(matches.homeTeamId, teams.id))
-      .leftJoin(leagues, eq(matches.leagueId, leagues.id))
       .orderBy(desc(matches.matchDate));
 
-    return result.map(row => ({
-      id: row.id,
-      matchId: row.matchId,
-      homeTeamId: row.homeTeamId,
-      awayTeamId: row.awayTeamId,
-      homeTeamName: row.homeTeamName,
-      awayTeamName: row.awayTeamName,
-      homeScore: row.homeScore,
-      awayScore: row.awayScore,
-      homeSets: row.homeSets,
-      awaySets: row.awaySets,
-      setResults: row.setResults,
-      matchDate: row.matchDate,
-      status: row.status,
-      leagueId: row.leagueId,
-      seriesId: row.seriesId,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-      homeTeam: row.homeTeam && row.homeTeam.id ? row.homeTeam : undefined,
-      league: row.league && row.league.id ? row.league : undefined,
-    }));
+    // Fetch related data separately to avoid complex joins
+    const enrichedMatches = await Promise.all(
+      matchesData.map(async (match) => {
+        const [homeTeam, awayTeam, league] = await Promise.all([
+          match.homeTeamId ? this.getTeam(match.homeTeamId) : null,
+          match.awayTeamId ? this.getTeam(match.awayTeamId) : null,
+          match.leagueId ? this.getLeague(match.leagueId) : null,
+        ]);
+
+        return {
+          ...match,
+          homeTeam: homeTeam || undefined,
+          awayTeam: awayTeam || undefined,
+          league: league || undefined,
+        };
+      })
+    );
+
+    return enrichedMatches;
   }
 
   async getMatchesByLeague(leagueId: number): Promise<Match[]> {

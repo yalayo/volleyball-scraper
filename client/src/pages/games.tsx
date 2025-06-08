@@ -28,7 +28,7 @@ export default function GamesPage() {
   });
 
   // Debug: Log matches data
-  console.log("Matches data:", matches.length, matches.slice(0, 2));
+  console.log("Matches loaded:", matches.length);
 
   const { data: leagues = [] } = useQuery<League[]>({
     queryKey: ["/api/leagues"],
@@ -65,9 +65,9 @@ export default function GamesPage() {
 
   // Get unique team names
   const teamNames = Array.from(new Set([
-    ...matches.map(m => m.homeTeam?.name).filter(Boolean),
-    ...matches.map(m => m.awayTeam?.name).filter(Boolean)
-  ])).sort();
+    ...matches.map(m => m.homeTeam?.name || m.homeTeamName).filter(Boolean),
+    ...matches.map(m => m.awayTeam?.name || m.awayTeamName).filter(Boolean)
+  ])).filter((name): name is string => Boolean(name)).sort();
 
   // Calculate statistics
   const totalMatches = filteredMatches.length;

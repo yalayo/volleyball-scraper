@@ -99,6 +99,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create initial admin user (one-time setup)
+  app.post("/api/admin/create-initial", async (req, res) => {
+    try {
+      // Check if any admin users already exist
+      const existingAdmin = await storage.getUserByUsername('admin');
+      
+      if (existingAdmin) {
+        return res.status(409).json({ message: "Admin user already exists" });
+      }
+
+      // Create new admin user with secure password
+      const adminUser = await storage.createAdminUser("admin", "SecurePass2024!", "admin@volleyball.com");
+      
+      res.json({
+        message: "Admin user created successfully",
+        username: adminUser.username,
+        credentials: "Username: admin, Password: SecurePass2024!"
+      });
+    } catch (error) {
+      console.error("Error creating admin user:", error);
+      res.status(500).json({ message: "Failed to create admin user" });
+    }
+  });
+
   // Admin password change endpoint
   app.post("/api/admin/change-password", requireAdmin, async (req, res) => {
     try {

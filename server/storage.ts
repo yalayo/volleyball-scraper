@@ -1213,7 +1213,7 @@ export class DatabaseStorage implements IStorage {
       const [playerData] = await db
         .select()
         .from(players)
-        .where(eq(players.samsPlayerId, account.samsPlayerId));
+        .where(eq(players.playerId, account.samsPlayerId));
 
       if (playerData) {
         // Get team data

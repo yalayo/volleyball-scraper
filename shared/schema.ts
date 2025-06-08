@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, boolean, varchar } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -211,6 +211,65 @@ export const trainingParticipants = pgTable("training_participants", {
   playerAccountId: integer("player_account_id").references(() => playerAccounts.id).notNull(),
   joinedAt: timestamp("joined_at").defaultNow(),
   status: text("status").default("joined")
+});
+
+// Summer leagues for off-season play
+export const summerLeagues = pgTable("summer_leagues", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  creatorId: integer("creator_id").notNull().references(() => playerAccounts.id),
+  season: text("season").notNull(), // e.g., "2024-Summer"
+  registrationOpen: boolean("registration_open").default(true),
+  maxTeams: integer("max_teams").default(16),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  location: text("location"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Teams applying to join summer leagues
+export const summerTeamApplications = pgTable("summer_team_applications", {
+  id: serial("id").primaryKey(),
+  summerLeagueId: integer("summer_league_id").notNull().references(() => summerLeagues.id),
+  teamName: text("team_name").notNull(),
+  captainId: integer("captain_id").notNull().references(() => playerAccounts.id),
+  contactEmail: text("contact_email").notNull(),
+  contactPhone: text("contact_phone"),
+  status: text("status").default("pending"), // pending, approved, rejected
+  appliedAt: timestamp("applied_at").defaultNow(),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewedBy: integer("reviewed_by").references(() => playerAccounts.id),
+});
+
+// Friendly match requests between teams
+export const friendlyMatchRequests = pgTable("friendly_match_requests", {
+  id: serial("id").primaryKey(),
+  requestingTeamId: integer("requesting_team_id").notNull().references(() => teams.id),
+  requestingTrainerId: integer("requesting_trainer_id").notNull().references(() => playerAccounts.id),
+  targetTeamId: integer("target_team_id").notNull().references(() => teams.id),
+  proposedDate: timestamp("proposed_date").notNull(),
+  proposedLocation: text("proposed_location").notNull(),
+  message: text("message"),
+  status: text("status").default("pending"), // pending, accepted, declined
+  respondedAt: timestamp("responded_at"),
+  respondedBy: integer("responded_by").references(() => playerAccounts.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Training session invitations
+export const trainingInvitations = pgTable("training_invitations", {
+  id: serial("id").primaryKey(),
+  trainerId: integer("trainer_id").notNull().references(() => playerAccounts.id),
+  invitedPlayerId: integer("invited_player_id").notNull().references(() => playerAccounts.id),
+  sessionDate: timestamp("session_date").notNull(),
+  location: text("location").notNull(),
+  description: text("description"),
+  duration: integer("duration_minutes").default(120), // Default 2 hours
+  status: text("status").default("pending"), // pending, accepted, declined
+  respondedAt: timestamp("responded_at"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Relations
@@ -437,6 +496,40 @@ export type TrainingSession = typeof trainingSessions.$inferSelect;
 
 export type InsertTrainingParticipant = z.infer<typeof insertTrainingParticipantSchema>;
 export type TrainingParticipant = typeof trainingParticipants.$inferSelect;
+
+// Summer league schemas and types
+export const insertSummerLeagueSchema = createInsertSchema(summerLeagues).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSummerTeamApplicationSchema = createInsertSchema(summerTeamApplications).omit({
+  id: true,
+  appliedAt: true,
+});
+
+export const insertFriendlyMatchRequestSchema = createInsertSchema(friendlyMatchRequests).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertTrainingInvitationSchema = createInsertSchema(trainingInvitations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertSummerLeague = z.infer<typeof insertSummerLeagueSchema>;
+export type SummerLeague = typeof summerLeagues.$inferSelect;
+
+export type InsertSummerTeamApplication = z.infer<typeof insertSummerTeamApplicationSchema>;
+export type SummerTeamApplication = typeof summerTeamApplications.$inferSelect;
+
+export type InsertFriendlyMatchRequest = z.infer<typeof insertFriendlyMatchRequestSchema>;
+export type FriendlyMatchRequest = typeof friendlyMatchRequests.$inferSelect;
+
+export type InsertTrainingInvitation = z.infer<typeof insertTrainingInvitationSchema>;
+export type TrainingInvitation = typeof trainingInvitations.$inferSelect;
 
 export type InsertPlayerVerification = z.infer<typeof insertPlayerVerificationSchema>;
 export type PlayerVerification = typeof playerVerifications.$inferSelect;

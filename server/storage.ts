@@ -119,6 +119,34 @@ export interface IStorage {
     isFullyVerified: boolean;
   }>;
   verifyPlayerBySamsId(verifierPlayerId: number, targetSamsId: string, isTrainer: boolean): Promise<PlayerVerification>;
+
+  // Summer league methods
+  getSummerLeagues(): Promise<(SummerLeague & { creator?: PlayerAccount })[]>;
+  getSummerLeague(id: number): Promise<SummerLeague | undefined>;
+  createSummerLeague(league: InsertSummerLeague): Promise<SummerLeague>;
+  updateSummerLeague(id: number, league: Partial<InsertSummerLeague>): Promise<SummerLeague | undefined>;
+  deleteSummerLeague(id: number): Promise<boolean>;
+
+  // Summer team application methods
+  getSummerTeamApplications(summerLeagueId?: number): Promise<(SummerTeamApplication & { captain?: PlayerAccount; league?: SummerLeague })[]>;
+  getSummerTeamApplication(id: number): Promise<SummerTeamApplication | undefined>;
+  createSummerTeamApplication(application: InsertSummerTeamApplication): Promise<SummerTeamApplication>;
+  updateSummerTeamApplication(id: number, application: Partial<InsertSummerTeamApplication>): Promise<SummerTeamApplication | undefined>;
+  deleteSummerTeamApplication(id: number): Promise<boolean>;
+
+  // Friendly match request methods
+  getFriendlyMatchRequests(teamId?: number): Promise<(FriendlyMatchRequest & { requestingTeam?: Team; targetTeam?: Team; trainer?: PlayerAccount })[]>;
+  getFriendlyMatchRequest(id: number): Promise<FriendlyMatchRequest | undefined>;
+  createFriendlyMatchRequest(request: InsertFriendlyMatchRequest): Promise<FriendlyMatchRequest>;
+  updateFriendlyMatchRequest(id: number, request: Partial<InsertFriendlyMatchRequest>): Promise<FriendlyMatchRequest | undefined>;
+  deleteFriendlyMatchRequest(id: number): Promise<boolean>;
+
+  // Training invitation methods
+  getTrainingInvitations(playerId?: number, trainerId?: number): Promise<(TrainingInvitation & { trainer?: PlayerAccount; invitedPlayer?: PlayerAccount })[]>;
+  getTrainingInvitation(id: number): Promise<TrainingInvitation | undefined>;
+  createTrainingInvitation(invitation: InsertTrainingInvitation): Promise<TrainingInvitation>;
+  updateTrainingInvitation(id: number, invitation: Partial<InsertTrainingInvitation>): Promise<TrainingInvitation | undefined>;
+  deleteTrainingInvitation(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {

@@ -88,6 +88,50 @@ export default function MatchDetails() {
     },
   });
 
+  const generateVideoMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/matches/${matchId}/generate-video`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to generate video');
+      }
+      
+      // Create a blob from the response
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `match_${matchId}_summary.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      return { success: true };
+    },
+    onSuccess: () => {
+      toast({
+        title: "Video Generated Successfully",
+        description: "Match summary video has been downloaded",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Video Generation Failed",
+        description: error.message || "Failed to generate match video",
+        variant: "destructive",
+      });
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -258,14 +302,36 @@ export default function MatchDetails() {
             </div>
           </div>
           
-          {match.scoresheetPdfUrl && (
-            <Button asChild>
-              <a href={match.scoresheetPdfUrl} target="_blank" rel="noopener noreferrer">
-                <Download className="w-4 h-4 mr-2" />
-                Download Scoresheet
-              </a>
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {match.scoresheetPdfUrl && (
+              <Button asChild>
+                <a href={match.scoresheetPdfUrl} target="_blank" rel="noopener noreferrer">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Scoresheet
+                </a>
+              </Button>
+            )}
+            
+            {match.sets && match.sets.length > 0 && (
+              <Button 
+                onClick={() => generateVideoMutation.mutate()}
+                disabled={generateVideoMutation.isPending}
+                variant="outline"
+              >
+                {generateVideoMutation.isPending ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Generating Video...
+                  </>
+                ) : (
+                  <>
+                    <Video className="w-4 h-4 mr-2" />
+                    Generate Match Video
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -377,9 +443,6 @@ export default function MatchDetails() {
         </Card>
       )}
 
-      {/* Debug info */}
-      {console.log('Rendering match details. Sets length:', match?.sets?.length, 'Lineups length:', match?.lineups?.length)}
-      
       {/* No detailed data message */}
       {(!match.sets || match.sets.length === 0) && (
         <Card>

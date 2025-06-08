@@ -1,4 +1,4 @@
-import { users, leagues, teams, players, scrapeLogs, matches, teamStats, teamHighlights, userTeamPreferences, playerAccounts, type User, type InsertUser, type League, type InsertLeague, type Team, type InsertTeam, type Player, type InsertPlayer, type ScrapeLog, type InsertScrapeLog, type Match, type InsertMatch, type TeamStats, type InsertTeamStats, type TeamHighlight, type InsertTeamHighlight, type UserTeamPreference, type InsertUserTeamPreference, type PlayerAccount, type InsertPlayerAccount } from "@shared/schema";
+import { users, leagues, teams, players, scrapeLogs, matches, teamStats, teamHighlights, userTeamPreferences, playerAccounts, trainingSessions, trainingParticipants, type User, type InsertUser, type League, type InsertLeague, type Team, type InsertTeam, type Player, type InsertPlayer, type ScrapeLog, type InsertScrapeLog, type Match, type InsertMatch, type TeamStats, type InsertTeamStats, type TeamHighlight, type InsertTeamHighlight, type UserTeamPreference, type InsertUserTeamPreference, type PlayerAccount, type InsertPlayerAccount, type TrainingSession, type InsertTrainingSession, type TrainingParticipant, type InsertTrainingParticipant } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, count, sql, or } from "drizzle-orm";
 
@@ -87,6 +87,11 @@ export interface IStorage {
   // Player dashboard methods
   getPlayerBySamsId(samsPlayerId: string): Promise<Player | undefined>;
   getMatchesByTeam(teamId: number): Promise<(Match & { homeTeam?: Team; awayTeam?: Team; league?: League })[]>;
+  
+  // Training session methods
+  getTrainingSessionsByTeam(teamId: number): Promise<(TrainingSession & { organizer?: PlayerAccount; participants?: TrainingParticipant[] })[]>;
+  createTrainingSession(session: InsertTrainingSession): Promise<TrainingSession>;
+  joinTrainingSession(sessionId: number, playerAccountId: number): Promise<TrainingParticipant>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -883,6 +888,54 @@ export class DatabaseStorage implements IStorage {
     }
 
     return results;
+  }
+
+  async getTrainingSessionsByTeam(teamId: number): Promise<(TrainingSession & { organizer?: PlayerAccount; participants?: TrainingParticipant[] })[]> {
+    const sessions = await db
+      .select()
+      .from(trainingSessions)
+      .where(eq(trainingSessions.teamId, teamId))
+      .orderBy(desc(trainingSessions.sessionDate));
+
+    const results = [];
+    for (const session of sessions) {
+      // Get organizer
+      const [organizer] = await db.select().from(playerAccounts).where(eq(playerAccounts.id, session.organizerId));
+      
+      // Get participants
+      const participants = await db
+        .select()
+        .from(trainingParticipants)
+        .where(eq(trainingParticipants.trainingSessionId, session.id));
+
+      results.push({
+        ...session,
+        organizer: organizer || undefined,
+        participants
+      });
+    }
+
+    return results;
+  }
+
+  async createTrainingSession(session: InsertTrainingSession): Promise<TrainingSession> {
+    const [newSession] = await db
+      .insert(trainingSessions)
+      .values(session)
+      .returning();
+    return newSession;
+  }
+
+  async joinTrainingSession(sessionId: number, playerAccountId: number): Promise<TrainingParticipant> {
+    const [participation] = await db
+      .insert(trainingParticipants)
+      .values({
+        trainingSessionId: sessionId,
+        playerAccountId,
+        status: "joined"
+      })
+      .returning();
+    return participation;
   }
 }
 

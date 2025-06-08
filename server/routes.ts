@@ -521,36 +521,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Player dashboard - get training sessions (mock data for now)
+  // Player dashboard - get training sessions for player's team
   app.get('/api/player-dashboard/training-sessions/:samsPlayerId', async (req, res) => {
     try {
-      // Return sample training sessions
-      const trainingSessions = [
-        {
-          id: 1,
-          title: "Spike Training",
-          description: "Practice attacking techniques and timing",
-          sessionDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-          location: "Gymnasium Hall A",
-          organizer: "Coach Weber",
-          participants: ["Max Müller", "Lisa Schmidt"],
-          maxParticipants: 8,
-          isJoined: false
-        },
-        {
-          id: 2,
-          title: "Defense Drills",
-          description: "Improve blocking and digging skills",
-          sessionDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-          location: "Training Center",
-          organizer: "Team Captain",
-          participants: ["Anna Weber", "Tom Fischer", "Nina Bauer"],
-          maxParticipants: 6,
-          isJoined: true
-        }
-      ];
+      const { samsPlayerId } = req.params;
       
-      res.json(trainingSessions);
+      // Find player by SAMS ID to get their team
+      const player = await storage.getPlayerBySamsId(samsPlayerId);
+      if (!player) {
+        return res.status(404).json({ message: "Player not found" });
+      }
+
+      if (!player.teamId) {
+        return res.status(400).json({ message: "Player is not assigned to a team" });
+      }
+
+      // Get training sessions for the player's team
+      const sessions = await storage.getTrainingSessionsByTeam(player.teamId);
+      res.json(sessions);
     } catch (error) {
       console.error("Error fetching training sessions:", error);
       res.status(500).json({ message: "Failed to fetch training sessions" });
@@ -560,15 +548,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Join training session
   app.post('/api/player-dashboard/join-training', async (req, res) => {
     try {
-      const { sessionId, playerId } = req.body;
+      const { sessionId, playerAccountId } = req.body;
       
-      // In a real implementation, this would update the training session participants
-      console.log(`Player ${playerId} joined training session ${sessionId}`);
-      
-      res.json({ success: true, message: "Successfully joined training session" });
+      const participation = await storage.joinTrainingSession(parseInt(sessionId), playerAccountId);
+      res.status(201).json({ success: true, message: "Successfully joined training session", participation });
     } catch (error) {
       console.error("Error joining training session:", error);
       res.status(500).json({ message: "Failed to join training session" });
+    }
+  });
+
+  // Create training session
+  app.post('/api/training-sessions', async (req, res) => {
+    try {
+      const sessionData = req.body;
+      const session = await storage.createTrainingSession(sessionData);
+      res.status(201).json(session);
+    } catch (error) {
+      console.error("Error creating training session:", error);
+      res.status(500).json({ message: "Failed to create training session" });
     }
   });
 

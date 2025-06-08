@@ -183,7 +183,8 @@ export const playerAccounts = pgTable("player_accounts", {
 export const playerVerifications = pgTable("player_verifications", {
   id: serial("id").primaryKey(),
   playerAccountId: integer("player_account_id").references(() => playerAccounts.id).notNull(),
-  verifiedByPlayerId: integer("verified_by_player_id").references(() => players.id).notNull(),
+  verifiedByPlayerId: integer("verified_by_player_id").references(() => players.id),
+  verifiedByAdminId: integer("verified_by_admin_id"),
   verificationNote: text("verification_note"),
   isApproved: boolean("is_approved").notNull(),
   createdAt: timestamp("created_at").defaultNow(),

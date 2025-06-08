@@ -1307,15 +1307,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Player account not found" });
       }
 
-      // Admin verification immediately sets status to verified
+      // Admin verification using the correct admin field
       const verification = await storage.createPlayerVerification({
         playerAccountId,
-        verifiedByPlayerId: adminId,
+        verifiedByAdminId: adminId,
         verificationNote: 'Admin verification',
         isApproved: true
       });
 
-      // Update player account verification status
+      // Update player account verification status immediately
       await storage.updatePlayerAccountVerification(playerAccountId, 'verified');
 
       res.json({ 

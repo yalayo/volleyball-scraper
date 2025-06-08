@@ -45,16 +45,26 @@ export default function PlayerRegister() {
         body: JSON.stringify({ samsPlayerId: samsId })
       });
       
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Validation failed');
-      }
+      const data = await response.json();
       
-      return response.json();
+      // Handle all response cases
+      if (response.status === 200) {
+        // Valid player ID, no account exists - proceed to registration
+        return { ...data, canProceed: true };
+      } else if (response.status === 409) {
+        // Valid player ID but account exists - show error
+        throw new Error(data.message || 'Account already exists');
+      } else if (response.status === 404) {
+        // Invalid player ID - show error
+        throw new Error(data.message || 'Player ID not found');
+      } else {
+        // Other errors
+        throw new Error(data.message || 'Validation failed');
+      }
     },
-    onSuccess: (data: ValidationResponse) => {
-      setValidationResult(data);
-      if (data.isValid) {
+    onSuccess: (data: ValidationResponse & { canProceed?: boolean }) => {
+      if (data.canProceed) {
+        setValidationResult(data);
         setRegistrationData(prev => ({ ...prev, samsPlayerId: data.samsPlayerId }));
         setStep('register');
         setErrors([]);

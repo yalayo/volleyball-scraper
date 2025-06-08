@@ -7,6 +7,8 @@ import Dashboard from "@/pages/dashboard";
 import GamesPage from "@/pages/games";
 import HighlightsPage from "@/pages/highlights";
 import PlayerRegister from "@/pages/player-register";
+import PlayerLogin from "@/pages/player-login";
+import PlayerDashboard from "@/pages/player-dashboard";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -16,6 +18,8 @@ function Router() {
       <Route path="/games" component={GamesPage}/>
       <Route path="/highlights" component={HighlightsPage}/>
       <Route path="/player-register" component={PlayerRegister}/>
+      <Route path="/player-login" component={PlayerLogin}/>
+      <Route path="/player-dashboard" component={PlayerDashboard}/>
       <Route component={NotFound} />
     </Switch>
   );

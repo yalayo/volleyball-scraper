@@ -1,6 +1,6 @@
 import { users, leagues, teams, players, scrapeLogs, matches, teamStats, teamHighlights, userTeamPreferences, playerAccounts, type User, type InsertUser, type League, type InsertLeague, type Team, type InsertTeam, type Player, type InsertPlayer, type ScrapeLog, type InsertScrapeLog, type Match, type InsertMatch, type TeamStats, type InsertTeamStats, type TeamHighlight, type InsertTeamHighlight, type UserTeamPreference, type InsertUserTeamPreference, type PlayerAccount, type InsertPlayerAccount } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, count, sql } from "drizzle-orm";
+import { eq, desc, count, sql, or } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -850,6 +850,39 @@ export class DatabaseStorage implements IStorage {
     // Check if the SAMS player ID exists in our scraped volleyball player data
     const [player] = await db.select().from(players).where(eq(players.playerId, samsPlayerId));
     return !!player;
+  }
+
+  async getPlayerBySamsId(samsPlayerId: string): Promise<Player | undefined> {
+    const [player] = await db.select().from(players).where(eq(players.playerId, samsPlayerId));
+    return player;
+  }
+
+  async getMatchesByTeam(teamId: number): Promise<(Match & { homeTeam?: Team; awayTeam?: Team; league?: League })[]> {
+    const matchesData = await db
+      .select({
+        match: matches,
+        homeTeam: teams,
+        league: leagues
+      })
+      .from(matches)
+      .leftJoin(teams, eq(matches.homeTeamId, teams.id))
+      .leftJoin(leagues, eq(matches.leagueId, leagues.id))
+      .where(or(eq(matches.homeTeamId, teamId), eq(matches.awayTeamId, teamId)))
+      .orderBy(desc(matches.matchDate));
+
+    const results = [];
+    for (const matchData of matchesData) {
+      const awayTeam = await db.select().from(teams).where(eq(teams.id, matchData.match.awayTeamId)).then(rows => rows[0]);
+      
+      results.push({
+        ...matchData.match,
+        homeTeam: matchData.homeTeam || undefined,
+        awayTeam: awayTeam || undefined,
+        league: matchData.league || undefined
+      });
+    }
+
+    return results;
   }
 }
 

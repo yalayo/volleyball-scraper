@@ -72,6 +72,13 @@ export default function AdminDashboard() {
     select: (data: any) => data || []
   });
 
+  // Get teams data
+  const { data: teams } = useQuery({
+    queryKey: ["/api/teams"],
+    enabled: session?.isAuthenticated,
+    select: (data: any) => data || []
+  });
+
   // No longer needed - navigation replaces dialogs
 
   // Logout mutation

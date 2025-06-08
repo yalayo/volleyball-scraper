@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import VerificationGate from "./verification-gate";
 
 interface PlayerAccount {
   id: number;
@@ -116,6 +117,16 @@ export default function PlayerDashboard() {
           <p className="mt-2 text-gray-600">Loading player data...</p>
         </div>
       </div>
+    );
+  }
+
+  // Show verification gate if player is not verified
+  if (player.verificationStatus !== 'verified') {
+    return (
+      <VerificationGate 
+        playerAccount={player} 
+        onVerified={() => window.location.reload()} 
+      />
     );
   }
 

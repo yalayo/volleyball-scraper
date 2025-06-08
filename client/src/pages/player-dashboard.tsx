@@ -14,11 +14,419 @@ import {
   UserPlus,
   LogOut,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Mail,
+  Sun,
+  Plus
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import VerificationGate from "./verification-gate";
+
+// Training Invitations Component
+function TrainingInvitationsTab({ playerAccountId }: { playerAccountId: number }) {
+  const queryClient = useQueryClient();
+  
+  const { data: invitations, isLoading } = useQuery({
+    queryKey: ["/api/training-invitations", playerAccountId],
+    retry: false,
+  });
+
+  const acceptInvitationMutation = useMutation({
+    mutationFn: async (invitationId: number) => {
+      return await apiRequest(`/api/training-invitations/${invitationId}/accept`, {
+        method: "POST",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/training-invitations"] });
+    },
+  });
+
+  const declineInvitationMutation = useMutation({
+    mutationFn: async (invitationId: number) => {
+      return await apiRequest(`/api/training-invitations/${invitationId}/decline`, {
+        method: "POST",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/training-invitations"] });
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="mt-2 text-gray-600">Loading invitations...</p>
+      </div>
+    );
+  }
+
+  if (!invitations || invitations.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <Mail className="mx-auto h-12 w-12 text-gray-400" />
+        <p className="mt-2 text-gray-600">No training invitations</p>
+        <p className="text-sm text-gray-500">Check back later for training opportunities!</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {invitations.map((invitation: any) => (
+        <div key={invitation.id} className="border rounded-lg p-4">
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <h3 className="font-semibold text-lg">{invitation.session.title}</h3>
+              <p className="text-gray-600 mb-2">{invitation.session.description}</p>
+              <div className="space-y-1 text-sm text-gray-600">
+                <div className="flex items-center">
+                  <Calendar className="mr-1 h-4 w-4" />
+                  {new Date(invitation.session.sessionDate).toLocaleDateString()}
+                </div>
+                <div className="flex items-center">
+                  <MapPin className="mr-1 h-4 w-4" />
+                  {invitation.session.location}
+                </div>
+                <div className="flex items-center">
+                  <Users className="mr-1 h-4 w-4" />
+                  Invited by {invitation.inviterName}
+                </div>
+              </div>
+            </div>
+            <div className="ml-4 space-x-2">
+              {invitation.status === 'pending' ? (
+                <>
+                  <Button
+                    onClick={() => acceptInvitationMutation.mutate(invitation.id)}
+                    disabled={acceptInvitationMutation.isPending}
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {acceptInvitationMutation.isPending ? 'Accepting...' : 'Accept'}
+                  </Button>
+                  <Button
+                    onClick={() => declineInvitationMutation.mutate(invitation.id)}
+                    disabled={declineInvitationMutation.isPending}
+                    size="sm"
+                    variant="outline"
+                  >
+                    {declineInvitationMutation.isPending ? 'Declining...' : 'Decline'}
+                  </Button>
+                </>
+              ) : (
+                <Badge variant={invitation.status === 'accepted' ? 'default' : 'secondary'}>
+                  {invitation.status}
+                </Badge>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Summer League Management Component
+function SummerLeagueManagementTab({ playerAccountId }: { playerAccountId: number }) {
+  const [showCreateLeague, setShowCreateLeague] = useState(false);
+  const [showCreateTeam, setShowCreateTeam] = useState(false);
+  const queryClient = useQueryClient();
+
+  const { data: summerLeagues, isLoading } = useQuery({
+    queryKey: ["/api/summer-leagues"],
+    retry: false,
+  });
+
+  const { data: myTeams } = useQuery({
+    queryKey: ["/api/summer-teams/my-teams", playerAccountId],
+    retry: false,
+  });
+
+  const createLeagueMutation = useMutation({
+    mutationFn: async (leagueData: any) => {
+      return await apiRequest("/api/summer-leagues", {
+        method: "POST",
+        body: JSON.stringify(leagueData),
+        headers: { "Content-Type": "application/json" },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/summer-leagues"] });
+      setShowCreateLeague(false);
+    },
+  });
+
+  const createTeamMutation = useMutation({
+    mutationFn: async (teamData: any) => {
+      return await apiRequest("/api/summer-teams", {
+        method: "POST",
+        body: JSON.stringify(teamData),
+        headers: { "Content-Type": "application/json" },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/summer-teams"] });
+      setShowCreateTeam(false);
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="mt-2 text-gray-600">Loading summer leagues...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Action Buttons */}
+      <div className="flex space-x-4">
+        <Button 
+          onClick={() => setShowCreateLeague(true)}
+          className="flex items-center"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Create Summer League
+        </Button>
+        <Button 
+          onClick={() => setShowCreateTeam(true)}
+          variant="outline"
+          className="flex items-center"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Create Team
+        </Button>
+      </div>
+
+      {/* My Teams */}
+      {myTeams && myTeams.length > 0 && (
+        <div>
+          <h3 className="text-lg font-semibold mb-3">My Teams</h3>
+          <div className="grid gap-4">
+            {myTeams.map((team: any) => (
+              <div key={team.id} className="border rounded-lg p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-medium">{team.name}</h4>
+                    <p className="text-sm text-gray-600">{team.league?.name}</p>
+                    <p className="text-sm text-gray-500">{team.playerCount} players</p>
+                  </div>
+                  <Badge variant={team.status === 'active' ? 'default' : 'secondary'}>
+                    {team.status}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Available Summer Leagues */}
+      <div>
+        <h3 className="text-lg font-semibold mb-3">Available Summer Leagues</h3>
+        {!summerLeagues || summerLeagues.length === 0 ? (
+          <div className="text-center py-8">
+            <Sun className="mx-auto h-12 w-12 text-gray-400" />
+            <p className="mt-2 text-gray-600">No summer leagues available</p>
+            <p className="text-sm text-gray-500">Create the first summer league!</p>
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {summerLeagues.map((league: any) => (
+              <div key={league.id} className="border rounded-lg p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-medium">{league.name}</h4>
+                    <p className="text-sm text-gray-600">{league.description}</p>
+                    <p className="text-sm text-gray-500">
+                      Season: {league.season} • {league.teamCount || 0} teams
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <Badge variant={league.registrationOpen ? 'default' : 'secondary'}>
+                      {league.registrationOpen ? 'Open' : 'Closed'}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Create League Modal */}
+      {showCreateLeague && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Create Summer League</h3>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target as HTMLFormElement);
+              createLeagueMutation.mutate({
+                name: formData.get('name'),
+                season: formData.get('season'),
+                description: formData.get('description'),
+                location: formData.get('location'),
+                creatorId: playerAccountId,
+                registrationOpen: true,
+                maxTeams: parseInt(formData.get('maxTeams') as string) || 8,
+              });
+            }}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">League Name</label>
+                  <input
+                    name="name"
+                    type="text"
+                    required
+                    className="w-full border rounded-md px-3 py-2"
+                    placeholder="Summer Volleyball League 2024"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Season</label>
+                  <input
+                    name="season"
+                    type="text"
+                    required
+                    className="w-full border rounded-md px-3 py-2"
+                    placeholder="Summer 2024"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Description</label>
+                  <textarea
+                    name="description"
+                    className="w-full border rounded-md px-3 py-2"
+                    rows={3}
+                    placeholder="Competitive summer volleyball league..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Location</label>
+                  <input
+                    name="location"
+                    type="text"
+                    className="w-full border rounded-md px-3 py-2"
+                    placeholder="Sports Complex"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Max Teams</label>
+                  <input
+                    name="maxTeams"
+                    type="number"
+                    min="4"
+                    max="16"
+                    defaultValue="8"
+                    className="w-full border rounded-md px-3 py-2"
+                  />
+                </div>
+              </div>
+              <div className="flex space-x-3 mt-6">
+                <Button
+                  type="submit"
+                  disabled={createLeagueMutation.isPending}
+                  className="flex-1"
+                >
+                  {createLeagueMutation.isPending ? 'Creating...' : 'Create League'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowCreateLeague(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create Team Modal */}
+      {showCreateTeam && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Create Summer Team</h3>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target as HTMLFormElement);
+              createTeamMutation.mutate({
+                name: formData.get('name'),
+                leagueId: parseInt(formData.get('leagueId') as string),
+                description: formData.get('description'),
+                captainId: playerAccountId,
+              });
+            }}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Team Name</label>
+                  <input
+                    name="name"
+                    type="text"
+                    required
+                    className="w-full border rounded-md px-3 py-2"
+                    placeholder="Thunder Strikers"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">League</label>
+                  <select
+                    name="leagueId"
+                    required
+                    className="w-full border rounded-md px-3 py-2"
+                  >
+                    <option value="">Select a league</option>
+                    {summerLeagues && summerLeagues
+                      .filter((league: any) => league.registrationOpen)
+                      .map((league: any) => (
+                        <option key={league.id} value={league.id}>
+                          {league.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Description</label>
+                  <textarea
+                    name="description"
+                    className="w-full border rounded-md px-3 py-2"
+                    rows={3}
+                    placeholder="Competitive team looking for skilled players..."
+                  />
+                </div>
+              </div>
+              <div className="flex space-x-3 mt-6">
+                <Button
+                  type="submit"
+                  disabled={createTeamMutation.isPending}
+                  className="flex-1"
+                >
+                  {createTeamMutation.isPending ? 'Creating...' : 'Create Team'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowCreateTeam(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface PlayerAccount {
   id: number;
@@ -246,10 +654,12 @@ export default function PlayerDashboard() {
             </Card>
 
             <Tabs defaultValue="matches" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="matches">Team Matches</TabsTrigger>
                 <TabsTrigger value="training">Training Sessions</TabsTrigger>
                 <TabsTrigger value="teammates">Teammates</TabsTrigger>
+                <TabsTrigger value="invitations">Training Invitations</TabsTrigger>
+                <TabsTrigger value="summer">Summer Leagues</TabsTrigger>
               </TabsList>
 
               {/* Team Matches */}
@@ -410,6 +820,36 @@ export default function PlayerDashboard() {
                       <p className="mt-2 text-gray-600">Teammate directory coming soon</p>
                       <p className="text-sm text-gray-500">Connect with your team members and organize training sessions</p>
                     </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Training Invitations */}
+              <TabsContent value="invitations">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Mail className="mr-2 h-5 w-5" />
+                      Training Invitations
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <TrainingInvitationsTab playerAccountId={player.id} />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Summer Leagues */}
+              <TabsContent value="summer">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Sun className="mr-2 h-5 w-5" />
+                      Summer Leagues & Teams
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <SummerLeagueManagementTab playerAccountId={player.id} />
                   </CardContent>
                 </Card>
               </TabsContent>

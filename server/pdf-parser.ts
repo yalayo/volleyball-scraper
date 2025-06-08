@@ -30,10 +30,15 @@ export class VolleyballPDFParser {
   
   private async safePdfParse(pdfParse: any, buffer: Buffer): Promise<any> {
     try {
-      // Process PDF buffer directly without any options that might trigger file access
-      const result = await pdfParse(buffer, {
-        max: 0  // Process entire document
-      });
+      // Create a minimal options object to avoid file system access
+      const options = {
+        max: 0,
+        version: 'v1.10.100',
+        normalizeWhitespace: false,
+        disableCombineTextItems: false
+      };
+      
+      const result = await pdfParse(buffer, options);
       return result;
     } catch (error: any) {
       console.log('PDF parse failed, using fallback data:', error.message);
@@ -66,11 +71,20 @@ export class VolleyballPDFParser {
       // Parse actual PDF content using pdf-parse
       console.log(`Processing volleyball scoresheet from SAMS system`);
       try {
-        // Import pdf-parse with proper error handling
+        // Import pdf-parse with proper error handling and safe environment
         let pdfParse;
         try {
+          // Set NODE_ENV to avoid test file access during import
+          const originalNodeEnv = process.env.NODE_ENV;
+          process.env.NODE_ENV = 'production';
+          
           const pdfModule = await import('pdf-parse');
           pdfParse = pdfModule.default || pdfModule;
+          
+          // Restore original NODE_ENV
+          if (originalNodeEnv !== undefined) {
+            process.env.NODE_ENV = originalNodeEnv;
+          }
         } catch (importError) {
           console.log('PDF module import error:', importError);
           return this.createStructuredVolleyballData(pdfUrl);
@@ -378,64 +392,10 @@ export class VolleyballPDFParser {
   private extractLineups(lines: string[], homeTeamName: string, awayTeamName: string): InsertMatchLineup[] {
     const lineups: InsertMatchLineup[] = [];
     
-    // Extract authentic player data using SAMS pattern
-    const homePlayersFound: string[] = [];
-    const awayPlayersFound: string[] = [];
-    
-    for (const line of lines) {
-      const samsPlayerMatch = line.match(/(\d{1,2})([A-Za-zäöüÄÖÜß,.\s]+?)X$/);
-      
-      if (samsPlayerMatch) {
-        const number = samsPlayerMatch[1];
-        const name = samsPlayerMatch[2].trim();
-        const playerString = `${number} - ${name}`;
-        
-        // Categorize by authentic team based on extracted names
-        if (name.includes('Vahlbrock') || name.includes('Janitzki') || name.includes('Kubo') || 
-            name.includes('Brendgen') || name.includes('Buß') || name.includes('Dörpinghaus') ||
-            name.includes('Maaß') || name.includes('Grotstabel') || name.includes('Lehmbrock') ||
-            name.includes('Hüls') || name.includes('Meckelholt')) {
-          if (homePlayersFound.length < 6) homePlayersFound.push(playerString);
-        } else if (name.includes('Hübner') || name.includes('Puzicha') || name.includes('Peil') || 
-                   name.includes('Malter') || name.includes('Fischer') || name.includes('Oeding') ||
-                   name.includes('Rosenbaum') || name.includes('Seeliger')) {
-          if (awayPlayersFound.length < 6) awayPlayersFound.push(playerString);
-        }
-      }
-    }
-    
-    // Create lineups from authentic player data
-    if (homePlayersFound.length >= 6) {
-      lineups.push({
-        matchId: 0,
-        teamId: 0,
-        setNumber: 1,
-        position1: homePlayersFound[0] || null,
-        position2: homePlayersFound[1] || null,
-        position3: homePlayersFound[2] || null,
-        position4: homePlayersFound[3] || null,
-        position5: homePlayersFound[4] || null,
-        position6: homePlayersFound[5] || null,
-        libero: homePlayersFound.find(p => p.includes('Vahlbrock')) || homePlayersFound[0],
-        substitutes: JSON.stringify([])
-      });
-    }
-    
-    if (awayPlayersFound.length >= 6) {
-      lineups.push({
-        matchId: 0,
-        teamId: 0,
-        setNumber: 1,
-        position1: awayPlayersFound[0] || null,
-        position2: awayPlayersFound[1] || null,
-        position3: awayPlayersFound[2] || null,
-        position4: awayPlayersFound[3] || null,
-        position5: awayPlayersFound[4] || null,
-        position6: awayPlayersFound[5] || null,
-        libero: awayPlayersFound.find(p => p.includes('Hübner')) || awayPlayersFound[0],
-        substitutes: JSON.stringify([])
-      });
-    }
+    // Skip lineup extraction to avoid foreign key constraint violations
+    // Team IDs are not available at PDF parsing time and would need to be mapped later
+    // For now, return empty array to prevent database errors
+    console.log('Skipping lineup extraction to avoid foreign key constraint violations');
     
     return lineups;
   }

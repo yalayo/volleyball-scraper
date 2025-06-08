@@ -198,59 +198,64 @@ export default function Games() {
               return (
                 <Card key={match.id} className="hover:shadow-md transition-shadow">
                   <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-4 mb-3">
-                          <div className="flex items-center space-x-2">
-                            <Users className="h-4 w-4 text-gray-400" />
-                            <span className="font-medium">{match.homeTeam?.name || "Unknown Team"}</span>
-                            <span className="text-gray-400">vs</span>
-                            <span className="font-medium">{match.awayTeam?.name || "Unknown Team"}</span>
-                          </div>
-                          {getStatusBadge(status)}
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                          <div className="flex items-center">
-                            <Calendar className="h-4 w-4 mr-2" />
-                            {formatDate(match.date)}
-                          </div>
-                          <div className="flex items-center">
-                            <MapPin className="h-4 w-4 mr-2" />
-                            {match.location || "TBD"}
-                          </div>
-                          <div className="flex items-center">
-                            <Trophy className="h-4 w-4 mr-2" />
-                            {match.league?.name || "Unknown League"}
-                          </div>
-                        </div>
-                        
-                        {status === "completed" && (
-                          <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                            <div className="text-center">
-                              <span className="text-lg font-bold">
-                                {match.homeScore} - {match.awayScore}
-                              </span>
-                              <div className="text-sm text-gray-600 mt-1">
-                                Final Score
-                              </div>
+                    <div className="space-y-4">
+                      {/* Header with teams and status */}
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <div className="flex items-center space-x-2 text-lg font-semibold text-gray-900">
+                              <span className="truncate">{match.homeTeam?.name || "Unknown Team"}</span>
+                              <span className="text-gray-400 font-normal">vs</span>
+                              <span className="truncate">{match.awayTeam?.name || "Unknown Team"}</span>
                             </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            {getStatusBadge(status)}
+                            <Badge variant="outline" className="text-xs">
+                              <Trophy className="h-3 w-3 mr-1" />
+                              {match.league?.name || "Unknown League"}
+                            </Badge>
+                          </div>
+                        </div>
+                        
+                        {/* Score display for completed matches */}
+                        {status === "completed" && (
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-gray-900">
+                              {match.homeScore} - {match.awayScore}
+                            </div>
+                            <div className="text-xs text-gray-500">Final Score</div>
                           </div>
                         )}
                       </div>
-                      
-                      <div className="flex flex-col items-end space-y-2">
+
+                      {/* Match details */}
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                          <div className="flex items-center text-gray-600">
+                            <Calendar className="h-4 w-4 mr-2 text-blue-500" />
+                            <span>{formatDate(match.date)}</span>
+                          </div>
+                          <div className="flex items-center text-gray-600">
+                            <MapPin className="h-4 w-4 mr-2 text-green-500" />
+                            <span className="truncate">{match.location || "TBD"}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Actions and metadata */}
+                      <div className="flex items-center justify-between pt-2">
+                        <div className="text-xs text-gray-500">
+                          Match ID: {match.matchId}
+                        </div>
                         {match.samsUrl && (
                           <Button variant="outline" size="sm" asChild>
                             <a href={match.samsUrl} target="_blank" rel="noopener noreferrer">
                               <ExternalLink className="h-4 w-4 mr-2" />
-                              View in SAMS
+                              View Details
                             </a>
                           </Button>
                         )}
-                        <div className="text-xs text-gray-500">
-                          ID: {match.matchId}
-                        </div>
                       </div>
                     </div>
                   </CardContent>

@@ -1,4 +1,5 @@
-import pdfParse from 'pdf-parse';
+// Temporarily disabled due to import issues
+// import pdfParse from 'pdf-parse';
 import axios from 'axios';
 import type { InsertMatchSet, InsertMatchLineup } from '@shared/schema';
 

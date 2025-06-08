@@ -1,7 +1,7 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
 import { storage, type IStorage } from "./storage";
-import { pdfParser } from "./pdf-parser";
+// import { pdfParser } from "./pdf-parser";
 import type { InsertLeague, InsertTeam, InsertPlayer, InsertMatch, InsertTeamStats, InsertScrapeLog, InsertMatchSet, InsertMatchLineup } from "@shared/schema";
 
 // Helper functions for enhanced player detection
@@ -783,58 +783,6 @@ function parseMatchResult(
   }
 }
 
-// Process PDF scoresheet and extract detailed match data
-async function processPDFScoresheet(
-  matchId: number,
-  pdfUrl: string,
-  storageInstance: IStorage
-): Promise<void> {
-  try {
-    console.log(`Processing PDF scoresheet for match ${matchId}: ${pdfUrl}`);
-    
-    // Parse PDF to extract detailed match information
-    const pdfData = await pdfParser.parsePDFFromUrl(pdfUrl);
-    
-    if (!pdfData) {
-      console.log(`Failed to parse PDF data from ${pdfUrl}`);
-      return;
-    }
-
-    console.log(`Successfully extracted PDF data: ${pdfData.sets.length} sets, ${pdfData.lineups.length} lineups`);
-
-    // Get team IDs for lineup processing
-    const homeTeamId = await getTeamIdByName(pdfData.homeTeamName, storageInstance);
-    const awayTeamId = await getTeamIdByName(pdfData.awayTeamName, storageInstance);
-
-    // Save match sets with detailed information
-    for (const setData of pdfData.sets) {
-      setData.matchId = matchId;
-      await storageInstance.createMatchSet(setData);
-    }
-
-    // Save lineups with team associations
-    for (const lineupData of pdfData.lineups) {
-      lineupData.matchId = matchId;
-      
-      // Determine team ID based on team name proximity
-      if (pdfData.homeTeamName && homeTeamId) {
-        lineupData.teamId = homeTeamId;
-      } else if (pdfData.awayTeamName && awayTeamId) {
-        lineupData.teamId = awayTeamId;
-      }
-      
-      if (lineupData.teamId) {
-        await storageInstance.createMatchLineup(lineupData);
-      }
-    }
-
-    console.log(`Successfully processed PDF data for match ${matchId}`);
-
-  } catch (error) {
-    console.error(`Error processing PDF scoresheet for match ${matchId}:`, error);
-  }
-}
-
 // Helper function to get team ID by name
 async function getTeamIdByName(teamName: string, storageInstance: IStorage): Promise<number | null> {
   try {
@@ -1227,10 +1175,9 @@ export async function scrapeVolleyballData(
           const createdMatch = await storageInstance.createMatch(matchData);
           matchCount++;
           
-          // Process PDF scoresheet if URL is available
+          // Process PDF scoresheet if URL is available (temporarily disabled)
           if (matchData.scoresheetPdfUrl && createdMatch.id) {
-            console.log(`Processing PDF for match ${createdMatch.id}: ${matchData.scoresheetPdfUrl}`);
-            await processPDFScoresheet(createdMatch.id, matchData.scoresheetPdfUrl, storageInstance);
+            console.log(`PDF found for match ${createdMatch.id}: ${matchData.scoresheetPdfUrl} (processing coming soon)`);
           }
           
           // Update team statistics

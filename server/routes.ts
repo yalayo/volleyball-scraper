@@ -113,8 +113,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to create admin user" });
     }
   });
-  // Stats endpoint
-  app.get("/api/stats", async (req, res) => {
+  // Admin-protected stats endpoint
+  app.get("/api/admin/stats", requireAdmin, async (req, res) => {
     try {
       const stats = await storage.getStats();
       res.json(stats);
@@ -124,8 +124,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Leagues endpoints
-  app.get("/api/leagues", async (req, res) => {
+  // Admin-protected leagues endpoints
+  app.get("/api/admin/leagues", requireAdmin, async (req, res) => {
     try {
       const leagues = await storage.getLeagues();
       res.json(leagues);

@@ -1,4 +1,4 @@
-import { users, leagues, teams, players, scrapeLogs, matches, teamStats, teamHighlights, userTeamPreferences, playerAccounts, trainingSessions, trainingParticipants, playerVerifications, type User, type InsertUser, type League, type InsertLeague, type Team, type InsertTeam, type Player, type InsertPlayer, type ScrapeLog, type InsertScrapeLog, type Match, type InsertMatch, type TeamStats, type InsertTeamStats, type TeamHighlight, type InsertTeamHighlight, type UserTeamPreference, type InsertUserTeamPreference, type PlayerAccount, type InsertPlayerAccount, type TrainingSession, type InsertTrainingSession, type TrainingParticipant, type InsertTrainingParticipant, type PlayerVerification, type InsertPlayerVerification } from "@shared/schema";
+import { users, leagues, teams, players, scrapeLogs, matches, matchSets, matchLineups, teamStats, teamHighlights, userTeamPreferences, playerAccounts, trainingSessions, trainingParticipants, playerVerifications, type User, type InsertUser, type League, type InsertLeague, type Team, type InsertTeam, type Player, type InsertPlayer, type ScrapeLog, type InsertScrapeLog, type Match, type InsertMatch, type MatchSet, type InsertMatchSet, type MatchLineup, type InsertMatchLineup, type TeamStats, type InsertTeamStats, type TeamHighlight, type InsertTeamHighlight, type UserTeamPreference, type InsertUserTeamPreference, type PlayerAccount, type InsertPlayerAccount, type TrainingSession, type InsertTrainingSession, type TrainingParticipant, type InsertTrainingParticipant, type PlayerVerification, type InsertPlayerVerification } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, count, sql, or, and } from "drizzle-orm";
 
@@ -42,6 +42,16 @@ export interface IStorage {
   createMatch(match: InsertMatch): Promise<Match>;
   updateMatch(id: number, match: Partial<InsertMatch>): Promise<Match | undefined>;
   deleteMatch(id: number): Promise<boolean>;
+
+  // Match Sets methods
+  getMatchSets(matchId: number): Promise<MatchSet[]>;
+  createMatchSet(matchSet: InsertMatchSet): Promise<MatchSet>;
+  deleteMatchSets(matchId: number): Promise<boolean>;
+
+  // Match Lineups methods
+  getMatchLineups(matchId: number): Promise<MatchLineup[]>;
+  createMatchLineup(lineup: InsertMatchLineup): Promise<MatchLineup>;
+  deleteMatchLineups(matchId: number): Promise<boolean>;
 
   // Team Stats methods
   getTeamStats(): Promise<(TeamStats & { team?: Team; league?: League })[]>;

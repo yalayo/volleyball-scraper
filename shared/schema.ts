@@ -73,8 +73,38 @@ export const matches = pgTable("matches", {
   status: text("status").default("completed"), // completed, scheduled, cancelled
   leagueId: integer("league_id").references(() => leagues.id),
   seriesId: text("series_id"),
+  scoresheetPdfUrl: text("scoresheet_pdf_url"), // URL to the PDF scoresheet
+  location: text("location"),
+  samsUrl: text("sams_url"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const matchSets = pgTable("match_sets", {
+  id: serial("id").primaryKey(),
+  matchId: integer("match_id").references(() => matches.id).notNull(),
+  setNumber: integer("set_number").notNull(), // 1, 2, 3, 4, 5
+  homeScore: integer("home_score").notNull(),
+  awayScore: integer("away_score").notNull(),
+  duration: integer("duration"), // Duration in minutes
+  pointSequence: text("point_sequence"), // JSON array of point events
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const matchLineups = pgTable("match_lineups", {
+  id: serial("id").primaryKey(),
+  matchId: integer("match_id").references(() => matches.id).notNull(),
+  teamId: integer("team_id").references(() => teams.id).notNull(),
+  setNumber: integer("set_number").notNull(),
+  position1: text("position_1"), // Player name or number
+  position2: text("position_2"),
+  position3: text("position_3"),
+  position4: text("position_4"),
+  position5: text("position_5"),
+  position6: text("position_6"),
+  libero: text("libero"),
+  substitutes: text("substitutes"), // JSON array of substitute events
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const teamStats = pgTable("team_stats", {
@@ -326,8 +356,24 @@ export const insertUserSchema = createInsertSchema(users).pick({
   password: true,
 });
 
+export const insertMatchSetSchema = createInsertSchema(matchSets).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertMatchLineupSchema = createInsertSchema(matchLineups).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertMatch = z.infer<typeof insertMatchSchema>;
 export type Match = typeof matches.$inferSelect;
+
+export type InsertMatchSet = z.infer<typeof insertMatchSetSchema>;
+export type MatchSet = typeof matchSets.$inferSelect;
+
+export type InsertMatchLineup = z.infer<typeof insertMatchLineupSchema>;
+export type MatchLineup = typeof matchLineups.$inferSelect;
 
 export type InsertTeamStats = z.infer<typeof insertTeamStatsSchema>;
 export type TeamStats = typeof teamStats.$inferSelect;

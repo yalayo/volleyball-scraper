@@ -998,6 +998,60 @@ export class DatabaseStorage implements IStorage {
     return newSession;
   }
 
+  // Match Sets methods
+  async getMatchSets(matchId: number): Promise<MatchSet[]> {
+    return await db
+      .select()
+      .from(matchSets)
+      .where(eq(matchSets.matchId, matchId))
+      .orderBy(matchSets.setNumber);
+  }
+
+  async createMatchSet(matchSet: InsertMatchSet): Promise<MatchSet> {
+    const [newMatchSet] = await db
+      .insert(matchSets)
+      .values(matchSet)
+      .returning();
+    return newMatchSet;
+  }
+
+  async deleteMatchSets(matchId: number): Promise<boolean> {
+    try {
+      await db.delete(matchSets).where(eq(matchSets.matchId, matchId));
+      return true;
+    } catch (error) {
+      console.error("Error deleting match sets:", error);
+      return false;
+    }
+  }
+
+  // Match Lineups methods
+  async getMatchLineups(matchId: number): Promise<MatchLineup[]> {
+    return await db
+      .select()
+      .from(matchLineups)
+      .where(eq(matchLineups.matchId, matchId))
+      .orderBy(matchLineups.setNumber, matchLineups.teamId);
+  }
+
+  async createMatchLineup(lineup: InsertMatchLineup): Promise<MatchLineup> {
+    const [newLineup] = await db
+      .insert(matchLineups)
+      .values(lineup)
+      .returning();
+    return newLineup;
+  }
+
+  async deleteMatchLineups(matchId: number): Promise<boolean> {
+    try {
+      await db.delete(matchLineups).where(eq(matchLineups.matchId, matchId));
+      return true;
+    } catch (error) {
+      console.error("Error deleting match lineups:", error);
+      return false;
+    }
+  }
+
   async joinTrainingSession(sessionId: number, playerAccountId: number): Promise<TrainingParticipant> {
     const [participation] = await db
       .insert(trainingParticipants)

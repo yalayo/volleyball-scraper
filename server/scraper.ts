@@ -1,7 +1,8 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
 import { storage, type IStorage } from "./storage";
-import type { InsertLeague, InsertTeam, InsertPlayer, InsertMatch, InsertTeamStats, InsertScrapeLog } from "@shared/schema";
+import { pdfParser } from "./pdf-parser";
+import type { InsertLeague, InsertTeam, InsertPlayer, InsertMatch, InsertTeamStats, InsertScrapeLog, InsertMatchSet, InsertMatchLineup } from "@shared/schema";
 
 // Helper functions for enhanced player detection
 function isValidPlayerName(text: string): boolean {
@@ -566,7 +567,19 @@ async function scrapeMatchResults(
 
         if (homeTeamName && awayTeamName && resultText && resultText.includes(':')) {
           console.log(`Found volleyball match: ${homeTeamName} vs ${awayTeamName} - ${resultText} (detailed: ${finalResultText})`);
-          const match = parseMatchResult(homeTeamName, awayTeamName, finalResultText, dateText, seriesId, leagueDbId);
+          
+          // Look for PDF scoresheet links in the same row
+          let pdfUrl: string | null = null;
+          const pdfLinks = $row.find('a[href*="scoresheet/pdf"], a[href*=".pdf"]');
+          if (pdfLinks.length > 0) {
+            const href = pdfLinks.first().attr('href');
+            if (href) {
+              pdfUrl = href.startsWith('http') ? href : `https://distributor.sams-score.de${href}`;
+              console.log(`Found PDF scoresheet: ${pdfUrl}`);
+            }
+          }
+          
+          const match = parseMatchResult(homeTeamName, awayTeamName, finalResultText, dateText, seriesId, leagueDbId, pdfUrl);
           if (match) {
             matches.push(match);
           }
@@ -623,8 +636,19 @@ async function scrapeMatchResults(
             }
           }
           
+          // Look for PDF scoresheet links in the same row
+          let pdfUrl: string | null = null;
+          const pdfLinks = $row.find('a[href*="scoresheet/pdf"], a[href*=".pdf"]');
+          if (pdfLinks.length > 0) {
+            const href = pdfLinks.first().attr('href');
+            if (href) {
+              pdfUrl = href.startsWith('http') ? href : `https://distributor.sams-score.de${href}`;
+              console.log(`Found PDF scoresheet: ${pdfUrl}`);
+            }
+          }
+          
           console.log(`Found volleyball match: ${homeTeam} vs ${awayTeam} - ${resultText} (detailed: ${finalResult})`);
-          const match = parseMatchResult(homeTeam, awayTeam, finalResult, '', seriesId, leagueDbId);
+          const match = parseMatchResult(homeTeam, awayTeam, finalResult, '', seriesId, leagueDbId, pdfUrl);
           if (match) {
             matches.push(match);
           }

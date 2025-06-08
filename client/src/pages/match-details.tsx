@@ -15,16 +15,21 @@ interface MatchSet {
   homeScore: number;
   awayScore: number;
   duration: number | null;
-  pointSequence: any[] | null;
+  pointSequence: string | null;
 }
 
 interface MatchLineup {
   id: number;
   setNumber: number;
-  position: number;
-  playerNumber: string | null;
-  playerName: string;
   teamId: number;
+  position1: string | null;
+  position2: string | null;
+  position3: string | null;
+  position4: string | null;
+  position5: string | null;
+  position6: string | null;
+  libero: string | null;
+  substitutes: string | null;
 }
 
 interface MatchDetails {
@@ -125,11 +130,21 @@ export default function MatchDetails() {
     return match.lineups.filter(lineup => 
       lineup.setNumber === setNumber && 
       (teamId ? lineup.teamId === teamId : true)
-    ).sort((a, b) => a.position - b.position);
+    );
   };
 
-  const renderPointSequence = (pointSequence: any[]) => {
-    if (!pointSequence || pointSequence.length === 0) {
+  const renderPointSequence = (pointSequence: string | null) => {
+    let parsedSequence: any[] = [];
+    
+    if (pointSequence) {
+      try {
+        parsedSequence = JSON.parse(pointSequence);
+      } catch (error) {
+        console.error("Failed to parse point sequence:", error);
+      }
+    }
+    
+    if (!parsedSequence || parsedSequence.length === 0) {
       return <p className="text-gray-500">No point sequence data available</p>;
     }
 
@@ -137,7 +152,7 @@ export default function MatchDetails() {
       <div className="space-y-2">
         <h4 className="font-semibold">Point-by-Point Analysis</h4>
         <div className="grid gap-2 max-h-64 overflow-y-auto">
-          {pointSequence.map((point, index) => (
+          {parsedSequence.map((point, index) => (
             <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
               <div className="flex items-center gap-2">
                 <Badge variant={point.team === 'home' ? 'default' : 'secondary'}>
@@ -161,24 +176,44 @@ export default function MatchDetails() {
       return <p className="text-gray-500">No lineup data available for {teamName}</p>;
     }
 
+    const lineup = lineups[0]; // Take the first lineup record for this team
+    const positions = [
+      { pos: 1, player: lineup.position1 },
+      { pos: 2, player: lineup.position2 },
+      { pos: 3, player: lineup.position3 },
+      { pos: 4, player: lineup.position4 },
+      { pos: 5, player: lineup.position5 },
+      { pos: 6, player: lineup.position6 }
+    ].filter(p => p.player);
+
     return (
       <div className="space-y-2">
         <h4 className="font-semibold">{teamName} Lineup</h4>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-          {lineups.map((player) => (
-            <div key={player.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+          {positions.map((position) => (
+            <div key={position.pos} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
               <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-bold">
-                {player.position}
+                {position.pos}
               </div>
               <div>
-                <p className="font-medium text-sm">{player.playerName}</p>
-                {player.playerNumber && (
-                  <p className="text-xs text-gray-600">#{player.playerNumber}</p>
-                )}
+                <p className="font-medium text-sm">{position.player}</p>
               </div>
             </div>
           ))}
         </div>
+        {lineup.libero && (
+          <div className="mt-2">
+            <div className="flex items-center gap-2 p-2 bg-yellow-50 rounded">
+              <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center text-sm font-bold">
+                L
+              </div>
+              <div>
+                <p className="font-medium text-sm">{lineup.libero}</p>
+                <p className="text-xs text-gray-600">Libero</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -290,8 +325,10 @@ export default function MatchDetails() {
               
               {[1, 2, 3, 4, 5].map((setNum) => {
                 const setData = getSetsByNumber(setNum);
-                const homeLineups = getLineupsBySet(setNum, 1); // Assuming team IDs
-                const awayLineups = getLineupsBySet(setNum, 2);
+                const allLineups = getLineupsBySet(setNum);
+                const teamIds = [...new Set(allLineups.map(l => l.teamId))];
+                const homeLineups = allLineups.filter(lineup => lineup.teamId === teamIds[0]);
+                const awayLineups = allLineups.filter(lineup => lineup.teamId === teamIds[1]);
                 
                 if (setData.length === 0) return null;
 

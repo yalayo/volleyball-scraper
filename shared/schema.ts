@@ -38,6 +38,8 @@ export const teams = pgTable("teams", {
   samsId: text("sams_id"),
   homepage: text("homepage"),
   logoUrl: text("logo_url"),
+  contactEmail: text("contact_email"),
+  contactAddress: text("contact_address"),
   leagueId: integer("league_id").references(() => leagues.id),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),

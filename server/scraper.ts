@@ -91,6 +91,89 @@ function extractPlayerFromText(text: string): { name: string; position: string |
   return null;
 }
 
+interface TeamContactInfo {
+  email: string | null;
+  address: string | null;
+}
+
+async function scrapeTeamContact(
+  baseUrl: string,
+  teamId: string
+): Promise<TeamContactInfo> {
+  const contactInfo: TeamContactInfo = {
+    email: null,
+    address: null
+  };
+
+  try {
+    // Construct team contact URL using the pattern provided by user
+    const contactUrl = baseUrl.replace(
+      /(&LeaguePresenter\.view=teamOverview.*)?$/,
+      `&LeaguePresenter.teamListView.view=contact&LeaguePresenter.view=teamOverview&LeaguePresenter.teamListView.teamId=${teamId}`
+    );
+
+    console.log(`Scraping contact info for team ${teamId} from: ${contactUrl}`);
+
+    const response = await axios.get(contactUrl, {
+      timeout: 15000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    });
+
+    const $ = cheerio.load(response.data);
+
+    // Look for the specific structure in samsCmsComponentBlock
+    $('.samsCmsComponentBlock').each((_, block) => {
+      const $block = $(block);
+      
+      // Extract email from mailto links
+      const emailLink = $block.find('a[href^="mailto:"]').first();
+      if (emailLink.length > 0) {
+        const href = emailLink.attr('href') || '';
+        const emailMatch = href.match(/mailto:\s*(.+)/);
+        if (emailMatch) {
+          contactInfo.email = emailMatch[1].trim();
+          console.log(`Found email: ${contactInfo.email}`);
+        }
+      }
+
+      // Extract address from the block content
+      const headerText = $block.find('h1.samsCmsComponentBlockHeader').text().trim();
+      if (headerText) {
+        // Look for address in paragraphs after the header
+        const paragraphs = $block.find('p');
+        let addressParts: string[] = [];
+        
+        paragraphs.each((_, p) => {
+          const $p = $(p);
+          const text = $p.text().trim();
+          
+          // Skip empty paragraphs and email table content
+          if (text && !text.includes('E-Mail:') && !text.includes('mailto:')) {
+            // Clean up the text and split by line breaks
+            const lines = text.split(/\r?\n|\r|<br\s*\/?>/i)
+              .map(line => line.trim())
+              .filter(line => line.length > 0);
+            
+            addressParts.push(...lines);
+          }
+        });
+
+        if (addressParts.length > 0) {
+          contactInfo.address = addressParts.join(', ');
+          console.log(`Found address: ${contactInfo.address}`);
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error(`Error scraping contact info for team ${teamId}:`, error);
+  }
+
+  return contactInfo;
+}
+
 interface ScrapedData {
   leagues: InsertLeague[];
   teams: InsertTeam[];
@@ -1080,16 +1163,47 @@ export async function scrapeVolleyballData(
     const teamDatabaseIds: { teamId: string; dbId: number }[] = [];
 
     for (const teamData of teams) {
-      const existingTeam = existingTeams.find(t => t.teamId === teamData.teamId);
-      
-      if (existingTeam) {
-        await storageInstance.updateTeam(existingTeam.id, teamData);
-        teamDatabaseIds.push({ teamId: teamData.teamId, dbId: existingTeam.id });
-        updatedCount++;
-      } else {
-        const newTeam = await storageInstance.createTeam(teamData);
-        teamDatabaseIds.push({ teamId: teamData.teamId, dbId: newTeam.id });
-        createdCount++;
+      try {
+        // Extract contact information for each team
+        console.log(`Extracting contact info for team: ${teamData.name} (ID: ${teamData.teamId})`);
+        const contactInfo = await scrapeTeamContact(url, teamData.teamId);
+        
+        // Add contact information to team data
+        const teamDataWithContact = {
+          ...teamData,
+          contactEmail: contactInfo.email,
+          contactAddress: contactInfo.address
+        };
+
+        const existingTeam = existingTeams.find(t => t.teamId === teamData.teamId);
+        
+        if (existingTeam) {
+          await storageInstance.updateTeam(existingTeam.id, teamDataWithContact);
+          teamDatabaseIds.push({ teamId: teamData.teamId, dbId: existingTeam.id });
+          updatedCount++;
+        } else {
+          const newTeam = await storageInstance.createTeam(teamDataWithContact);
+          teamDatabaseIds.push({ teamId: teamData.teamId, dbId: newTeam.id });
+          createdCount++;
+        }
+
+        // Add delay between contact extraction requests to be respectful
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+      } catch (error) {
+        console.error(`Failed to extract contact info for team ${teamData.teamId}:`, error);
+        // Continue with team creation/update without contact info
+        const existingTeam = existingTeams.find(t => t.teamId === teamData.teamId);
+        
+        if (existingTeam) {
+          await storageInstance.updateTeam(existingTeam.id, teamData);
+          teamDatabaseIds.push({ teamId: teamData.teamId, dbId: existingTeam.id });
+          updatedCount++;
+        } else {
+          const newTeam = await storageInstance.createTeam(teamData);
+          teamDatabaseIds.push({ teamId: teamData.teamId, dbId: newTeam.id });
+          createdCount++;
+        }
       }
     }
 

@@ -560,12 +560,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Store match lineups data with correct team IDs
-        for (const lineupData of pdfData.lineups) {
+        for (let i = 0; i < pdfData.lineups.length; i++) {
+          const lineupData = pdfData.lineups[i];
           lineupData.matchId = matchId;
-          // Use actual team IDs from the match
-          lineupData.teamId = lineupData.teamId === 0 ? 
+          
+          // The PDF parser extracts home lineups first, then away lineups for each set
+          // So for each set, first lineup is home team, second is away team
+          const isHomeTeam = (i % 2) === 0;
+          lineupData.teamId = isHomeTeam ? 
             (match.homeTeamId || 0) : 
             (match.awayTeamId || 0);
+            
           await storage.createMatchLineup(lineupData);
         }
         

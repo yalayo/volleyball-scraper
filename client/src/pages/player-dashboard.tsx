@@ -448,6 +448,9 @@ interface Match {
   awayTeam: { name: string };
   homeScore: number | null;
   awayScore: number | null;
+  homeSets: number | null;
+  awaySets: number | null;
+  setResults?: string | null;
   location?: string;
   status: string;
 }
@@ -727,17 +730,22 @@ export default function PlayerDashboard() {
                                   <div className="text-center">
                                     <p className="font-medium">{match.homeTeam.name}</p>
                                     <p className="text-2xl font-bold">
-                                      {match.homeScore !== null ? match.homeScore : '-'}
+                                      {match.homeSets !== null ? match.homeSets : '-'}
                                     </p>
                                   </div>
-                                  <div className="text-gray-500">vs</div>
+                                  <div className="text-gray-500">:</div>
                                   <div className="text-center">
                                     <p className="font-medium">{match.awayTeam.name}</p>
                                     <p className="text-2xl font-bold">
-                                      {match.awayScore !== null ? match.awayScore : '-'}
+                                      {match.awaySets !== null ? match.awaySets : '-'}
                                     </p>
                                   </div>
                                 </div>
+                                {match.setResults && (
+                                  <div className="mt-2 text-sm text-gray-600">
+                                    <span className="font-medium">Set scores:</span> {match.setResults}
+                                  </div>
+                                )}
                               </div>
                               <div className="text-right text-sm text-gray-600">
                                 <div className="flex items-center mb-1">

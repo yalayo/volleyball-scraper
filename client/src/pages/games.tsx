@@ -106,7 +106,34 @@ export default function GamesPage() {
               <span className={!homeWon ? "text-green-600" : "text-gray-600"}>{awaySets}</span>
             </div>
             <div className="text-sm text-gray-500">
-              Sets ({match.homeScore || 0} : {match.awayScore || 0} pts)
+              {(() => {
+                const homeSets = match.homeSets || 0;
+                const awaySets = match.awaySets || 0;
+                let homePoints = 0;
+                let awayPoints = 0;
+                
+                if (homeSets > awaySets) {
+                  // Home team won
+                  if (homeSets === 3 && awaySets === 2) {
+                    homePoints = 2; // Tie break win
+                    awayPoints = 1;
+                  } else {
+                    homePoints = 3; // Regular win (3-0 or 3-1)
+                    awayPoints = 0;
+                  }
+                } else if (awaySets > homeSets) {
+                  // Away team won
+                  if (awaySets === 3 && homeSets === 2) {
+                    awayPoints = 2; // Tie break win
+                    homePoints = 1;
+                  } else {
+                    awayPoints = 3; // Regular win (3-0 or 3-1)
+                    homePoints = 0;
+                  }
+                }
+                
+                return `Sets (${homePoints} : ${awayPoints} pts)`;
+              })()}
             </div>
           </div>
         );

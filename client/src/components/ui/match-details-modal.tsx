@@ -29,12 +29,34 @@ export default function MatchDetailsModal({ open, onClose, match }: MatchDetails
   const setResults = parseSetResults(match.setResults);
   const homeSets = match.homeSets || 0;
   const awaySets = match.awaySets || 0;
-  const homeScore = match.homeScore || 0;
-  const awayScore = match.awayScore || 0;
+  
+  // Calculate points based on volleyball scoring rules
+  let homePoints = 0;
+  let awayPoints = 0;
+  
+  if (homeSets > awaySets) {
+    // Home team won
+    if (homeSets === 3 && awaySets === 2) {
+      homePoints = 2; // Tie break win
+      awayPoints = 1;
+    } else {
+      homePoints = 3; // Regular win (3-0 or 3-1)
+      awayPoints = 0;
+    }
+  } else if (awaySets > homeSets) {
+    // Away team won
+    if (awaySets === 3 && homeSets === 2) {
+      awayPoints = 2; // Tie break win
+      homePoints = 1;
+    } else {
+      awayPoints = 3; // Regular win (3-0 or 3-1)
+      homePoints = 0;
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Trophy className="w-5 h-5" />
@@ -74,8 +96,8 @@ export default function MatchDetailsModal({ open, onClose, match }: MatchDetails
               <CardContent className="text-center">
                 <div className="text-2xl font-bold">{homeSets}</div>
                 <div className="text-sm text-gray-500">Sets Won</div>
-                <div className="text-lg font-semibold mt-2">{homeScore}</div>
-                <div className="text-xs text-gray-500">Total Points</div>
+                <div className="text-lg font-semibold mt-2">{homePoints}</div>
+                <div className="text-xs text-gray-500">League Points</div>
               </CardContent>
             </Card>
 
@@ -86,8 +108,8 @@ export default function MatchDetailsModal({ open, onClose, match }: MatchDetails
               <CardContent className="text-center">
                 <div className="text-2xl font-bold">{awaySets}</div>
                 <div className="text-sm text-gray-500">Sets Won</div>
-                <div className="text-lg font-semibold mt-2">{awayScore}</div>
-                <div className="text-xs text-gray-500">Total Points</div>
+                <div className="text-lg font-semibold mt-2">{awayPoints}</div>
+                <div className="text-xs text-gray-500">League Points</div>
               </CardContent>
             </Card>
           </div>

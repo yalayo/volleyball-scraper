@@ -1072,6 +1072,8 @@ export async function scrapeVolleyballData(
             samsId: null,
             homepage,
             logoUrl,
+            contactEmail: null,
+            contactAddress: null,
             leagueId: league.id,
             isActive: true
           };
@@ -1108,6 +1110,8 @@ export async function scrapeVolleyballData(
               samsId: null,
               homepage: null,
               logoUrl: null,
+              contactEmail: null,
+              contactAddress: null,
               leagueId: league.id,
               isActive: true
             };
@@ -1142,6 +1146,10 @@ export async function scrapeVolleyballData(
                   location: null,
                   teamId,
                   samsId: null,
+                  homepage: null,
+                  logoUrl: null,
+                  contactEmail: null,
+                  contactAddress: null,
                   leagueId: league.id,
                   isActive: true
                 };

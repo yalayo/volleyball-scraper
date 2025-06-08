@@ -155,68 +155,7 @@ export default function AdminDashboard() {
     changePasswordMutation.mutate({ newPassword });
   };
 
-  const renderDataDialog = () => {
-    let data: any[] = [];
-    let title = "";
-    
-    switch (dataType) {
-      case 'leagues':
-        data = leagues || [];
-        title = "All Leagues";
-        break;
-      case 'teams':
-        data = teams || [];
-        title = "All Teams";
-        break;
-      case 'players':
-        data = players || [];
-        title = "All Players";
-        break;
-      case 'matches':
-        data = matches || [];
-        title = "All Matches";
-        break;
-    }
 
-    return (
-      <Dialog open={showDataDialog} onOpenChange={setShowDataDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
-            <DialogDescription>
-              Complete list of {dataType} in the system
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            {data.length > 0 ? (
-              <div className="grid gap-3">
-                {data.map((item: any, index: number) => (
-                  <div key={item.id || index} className="border rounded-lg p-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium">{item.name || item.title}</h4>
-                        {item.category && <p className="text-sm text-gray-600">{item.category}</p>}
-                        {item.location && <p className="text-sm text-gray-500">{item.location}</p>}
-                        {item.team?.name && <p className="text-sm text-gray-500">Team: {item.team.name}</p>}
-                        {item.homeTeam?.name && <p className="text-sm text-gray-500">{item.homeTeam.name} vs {item.awayTeam?.name}</p>}
-                      </div>
-                      {item.isActive !== undefined && (
-                        <Badge variant={item.isActive ? "default" : "secondary"}>
-                          {item.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-center text-gray-500 py-8">No {dataType} found</p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -596,8 +535,7 @@ export default function AdminDashboard() {
         </Tabs>
       </div>
       
-      {/* Render data dialog */}
-      {renderDataDialog()}
+
     </div>
   );
 }

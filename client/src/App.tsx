@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import GamesPage from "@/pages/games";
+import PlayersPage from "@/pages/players";
 import HighlightsPage from "@/pages/highlights";
 import PlayerRegister from "@/pages/player-register";
 import PlayerLogin from "@/pages/player-login";
@@ -32,6 +33,7 @@ function Router() {
       {/* Legacy routes (admin-protected) */}
       <Route path="/dashboard" component={Dashboard}/>
       <Route path="/games" component={GamesPage}/>
+      <Route path="/players" component={PlayersPage}/>
       <Route path="/highlights" component={HighlightsPage}/>
       
       <Route component={NotFound} />

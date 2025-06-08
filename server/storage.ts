@@ -663,16 +663,16 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    // Create win streak highlight if significant
-    if (maxWinStreak >= 3) {
+    // Create win streak highlight if significant (lowered threshold for real data)
+    if (maxWinStreak >= 2) {
       const highlight = await this.createTeamHighlight({
         teamId,
         highlightType: 'win_streak',
         title: `${maxWinStreak}-Game Win Streak`,
-        description: `Achieved an impressive ${maxWinStreak} consecutive victories`,
+        description: `Achieved ${maxWinStreak} consecutive victories`,
         value: maxWinStreak,
         dateAchieved: streakStartDate || new Date(),
-        priority: maxWinStreak >= 5 ? 5 : 4,
+        priority: maxWinStreak >= 4 ? 5 : maxWinStreak >= 3 ? 4 : 3,
       });
       highlights.push(highlight);
     }
@@ -685,15 +685,15 @@ export class DatabaseStorage implements IStorage {
       return teamSets === 3 && opponentSets === 0;
     });
 
-    if (dominantWins.length >= 3) {
+    if (dominantWins.length >= 1) {
       const highlight = await this.createTeamHighlight({
         teamId,
         highlightType: 'dominant_performance',
-        title: `${dominantWins.length} Dominant Victories`,
-        description: `Secured ${dominantWins.length} straight-set (3-0) victories this season`,
+        title: `${dominantWins.length} Dominant ${dominantWins.length === 1 ? 'Victory' : 'Victories'}`,
+        description: `Secured ${dominantWins.length} straight-set (3-0) ${dominantWins.length === 1 ? 'victory' : 'victories'} this season`,
         value: dominantWins.length,
         dateAchieved: dominantWins[0]?.matchDate || new Date(),
-        priority: 3,
+        priority: dominantWins.length >= 3 ? 4 : 3,
       });
       highlights.push(highlight);
     }

@@ -84,9 +84,16 @@ export default function HighlightsPage() {
   // Generate highlights mutation
   const generateHighlightsMutation = useMutation({
     mutationFn: async (teamId: number) => {
-      return apiRequest(`/api/team-highlights/${teamId}/generate`, {
+      const response = await fetch(`/api/team-highlights/${teamId}/generate`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
+      if (!response.ok) {
+        throw new Error(`Failed to generate highlights: ${response.statusText}`);
+      }
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/team-highlights"] });

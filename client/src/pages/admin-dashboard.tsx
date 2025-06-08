@@ -44,6 +44,8 @@ export default function AdminDashboard() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [playerAccountId, setPlayerAccountId] = useState("");
+  const [playerToVerify, setPlayerToVerify] = useState(null);
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
@@ -114,6 +116,53 @@ export default function AdminDashboard() {
     }
   });
 
+  // Fetch player account details for verification
+  const fetchPlayerMutation = useMutation({
+    mutationFn: async (playerAccountId: string) => {
+      const response = await fetch(`/api/player-accounts/${playerAccountId}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Player account not found');
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setPlayerToVerify(data);
+    },
+    onError: () => {
+      setPlayerToVerify(null);
+    }
+  });
+
+  // Admin verification mutation
+  const adminVerifyMutation = useMutation({
+    mutationFn: async (playerAccountId: number) => {
+      const response = await fetch('/api/admin/verify-player', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          playerAccountId,
+          adminId: session.user?.id
+        }),
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to verify player');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      setPlayerToVerify(null);
+      setPlayerAccountId("");
+    }
+  });
+
   // Redirect if not authenticated
   useEffect(() => {
     if (!sessionLoading && !session?.isAuthenticated) {
@@ -163,6 +212,18 @@ export default function AdminDashboard() {
       return;
     }
     changePasswordMutation.mutate({ newPassword });
+  };
+
+  const handleFetchPlayer = () => {
+    if (playerAccountId.trim()) {
+      fetchPlayerMutation.mutate(playerAccountId.trim());
+    }
+  };
+
+  const handleAdminVerify = () => {
+    if (playerToVerify) {
+      adminVerifyMutation.mutate(playerToVerify.id);
+    }
   };
 
 
@@ -269,6 +330,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="leagues">
               <BarChart3 className="h-4 w-4 mr-2" />
               Leagues
+            </TabsTrigger>
+            <TabsTrigger value="verification">
+              <Shield className="h-4 w-4 mr-2" />
+              Player Verification
             </TabsTrigger>
             <TabsTrigger value="settings">
               <Settings className="h-4 w-4 mr-2" />
@@ -576,6 +641,160 @@ export default function AdminDashboard() {
                     </AlertDescription>
                   </Alert>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="verification" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  Admin Player Verification
+                </CardTitle>
+                <CardDescription>
+                  Verify players by their Player Account ID. Admin verification immediately marks the player as fully verified.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <Label htmlFor="playerAccountId">Player Account ID</Label>
+                    <Input
+                      id="playerAccountId"
+                      placeholder="Enter player account ID (e.g., 123)"
+                      value={playerAccountId}
+                      onChange={(e) => setPlayerAccountId(e.target.value)}
+                      disabled={fetchPlayerMutation.isPending}
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <Button 
+                      onClick={handleFetchPlayer}
+                      disabled={!playerAccountId.trim() || fetchPlayerMutation.isPending}
+                    >
+                      {fetchPlayerMutation.isPending ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        <>
+                          <Users className="h-4 w-4 mr-2" />
+                          Find Player
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {fetchPlayerMutation.isError && (
+                  <Alert variant="destructive">
+                    <AlertDescription>
+                      Player account not found. Please check the ID and try again.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {playerToVerify && (
+                  <Card className="border-green-200 bg-green-50">
+                    <CardHeader>
+                      <CardTitle className="text-lg">Player Details</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-sm font-medium">Email</Label>
+                          <p className="text-sm">{playerToVerify.email || 'Not provided'}</p>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium">SAMS ID</Label>
+                          <p className="text-sm">{playerToVerify.samsId || 'Not provided'}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-sm font-medium">Current Status</Label>
+                          <Badge variant={playerToVerify.verificationStatus === 'verified' ? 'default' : 'secondary'}>
+                            {playerToVerify.verificationStatus || 'Unverified'}
+                          </Badge>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium">Verification Count</Label>
+                          <p className="text-sm">{playerToVerify.verificationCount || 0} verifications</p>
+                        </div>
+                      </div>
+
+                      {playerToVerify.player && (
+                        <div>
+                          <Label className="text-sm font-medium">Associated Player</Label>
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-sm font-medium">{playerToVerify.player.name}</p>
+                            {playerToVerify.player.team && (
+                              <Badge variant="outline">
+                                {playerToVerify.player.team.name}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-600">
+                            Jersey #{playerToVerify.player.jerseyNumber} • {playerToVerify.player.position}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="border-t pt-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">Admin Verification</p>
+                            <p className="text-sm text-gray-600">
+                              This will immediately mark the player as fully verified
+                            </p>
+                          </div>
+                          <Button 
+                            onClick={handleAdminVerify}
+                            disabled={adminVerifyMutation.isPending || playerToVerify.verificationStatus === 'verified'}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            {adminVerifyMutation.isPending ? (
+                              <>
+                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                Verifying...
+                              </>
+                            ) : playerToVerify.verificationStatus === 'verified' ? (
+                              <>
+                                <Shield className="h-4 w-4 mr-2" />
+                                Already Verified
+                              </>
+                            ) : (
+                              <>
+                                <Shield className="h-4 w-4 mr-2" />
+                                Verify Player
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {adminVerifyMutation.isSuccess && (
+                  <Alert className="border-green-200 bg-green-50">
+                    <Shield className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-800">
+                      Player has been successfully verified by admin. They now have full access to all features.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {adminVerifyMutation.isError && (
+                  <Alert variant="destructive">
+                    <AlertDescription>
+                      Failed to verify player. Please try again or check the console for details.
+                    </AlertDescription>
+                  </Alert>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

@@ -364,6 +364,8 @@ export class DatabaseStorage implements IStorage {
     return player || undefined;
   }
 
+
+
   async createPlayer(player: InsertPlayer): Promise<Player> {
     const [newPlayer] = await db
       .insert(players)
@@ -897,6 +899,11 @@ export class DatabaseStorage implements IStorage {
 
   async getPlayerAccountBySamsId(samsPlayerId: string): Promise<PlayerAccount | undefined> {
     const [account] = await db.select().from(playerAccounts).where(eq(playerAccounts.samsPlayerId, samsPlayerId));
+    return account;
+  }
+
+  async getPlayerAccount(id: number): Promise<PlayerAccount | undefined> {
+    const [account] = await db.select().from(playerAccounts).where(eq(playerAccounts.id, id));
     return account;
   }
 

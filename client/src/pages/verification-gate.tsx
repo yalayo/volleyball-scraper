@@ -19,6 +19,8 @@ interface VerificationGateProps {
 export default function VerificationGate({ playerAccount, onVerified }: VerificationGateProps) {
   const [samsIdToVerify, setSamsIdToVerify] = useState("");
   const [isVerifyDialogOpen, setIsVerifyDialogOpen] = useState(false);
+  const [playerInfo, setPlayerInfo] = useState<any>(null);
+  const [isLoadingPlayerInfo, setIsLoadingPlayerInfo] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 

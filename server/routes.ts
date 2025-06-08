@@ -1004,27 +1004,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get verification progress for a player
-  app.get('/api/verification-progress/:playerAccountId', async (req, res) => {
+  app.get('/api/verification-progress', async (req, res) => {
     try {
-      const { playerAccountId } = req.params;
+      const playerAccountId = req.query.playerAccountId;
       
-      // Return mock verification progress data
-      const progress = {
-        teammateVerifications: Math.floor(Math.random() * 3),
-        trainerVerification: false,
-        adminVerification: false,
-        totalNeeded: 3,
-        isFullyVerified: false
-      };
+      if (!playerAccountId) {
+        return res.status(400).json({ message: "Player account ID is required" });
+      }
       
-      progress.isFullyVerified = progress.teammateVerifications >= progress.totalNeeded || 
-                                 progress.trainerVerification || 
-                                 progress.adminVerification;
-      
+      const progress = await storage.getVerificationProgress(Number(playerAccountId));
       res.json(progress);
     } catch (error: any) {
       console.error("Error fetching verification progress:", error);
       res.status(500).json({ message: "Failed to fetch verification progress" });
+    }
+  });
+
+  // Get player info by SAMS ID for verification preview
+  app.get('/api/player-info/:samsId', async (req, res) => {
+    try {
+      const { samsId } = req.params;
+      
+      // Get player from the players table
+      const player = await storage.getPlayerBySamsId(samsId);
+      if (!player) {
+        return res.status(404).json({ message: "Player not found" });
+      }
+
+      // Get team info
+      const team = player.teamId ? await storage.getTeam(player.teamId) : null;
+      
+      res.json({
+        id: player.id,
+        name: player.name,
+        jerseyNumber: player.jerseyNumber,
+        position: player.position,
+        team: team ? {
+          id: team.id,
+          name: team.name
+        } : null,
+        samsId: player.playerId
+      });
+    } catch (error: any) {
+      console.error("Error fetching player info:", error);
+      res.status(500).json({ message: "Failed to fetch player info" });
+    }
+  });
+
+  // Verify player endpoint with self-verification prevention
+  app.post('/api/verify-player', async (req, res) => {
+    try {
+      const { verifierPlayerId, targetSamsId, isTrainer = false } = req.body;
+      
+      if (!verifierPlayerId || !targetSamsId) {
+        return res.status(400).json({ message: "Verifier player ID and target SAMS ID are required" });
+      }
+
+      // Get verifier's account info
+      const verifierAccount = await storage.getPlayerAccount(verifierPlayerId);
+      if (!verifierAccount) {
+        return res.status(404).json({ message: "Verifier account not found" });
+      }
+
+      // Check if verifier is trying to verify themselves
+      if (verifierAccount.samsPlayerId === targetSamsId) {
+        return res.status(400).json({ message: "You cannot verify yourself" });
+      }
+
+      // Perform verification
+      const verification = await storage.verifyPlayerBySamsId(verifierPlayerId, targetSamsId, isTrainer);
+      
+      res.json({
+        message: "Player verification completed successfully",
+        verification
+      });
+    } catch (error: any) {
+      console.error("Error verifying player:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to verify player"
+      });
     }
   });
 

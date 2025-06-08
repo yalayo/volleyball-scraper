@@ -27,8 +27,8 @@ export default function GamesPage() {
     queryKey: ["/api/matches"],
   });
 
-  // Debug: Log the first match to see the data structure
-  console.log("First match:", matches[0]);
+  // Debug: Log matches data
+  console.log("Matches data:", matches.length, matches.slice(0, 2));
 
   const { data: leagues = [] } = useQuery<League[]>({
     queryKey: ["/api/leagues"],
@@ -65,8 +65,8 @@ export default function GamesPage() {
 
   // Get unique team names
   const teamNames = Array.from(new Set([
-    ...matches.map(m => m.homeTeamName),
-    ...matches.map(m => m.awayTeamName)
+    ...matches.map(m => m.homeTeam?.name).filter(Boolean),
+    ...matches.map(m => m.awayTeam?.name).filter(Boolean)
   ])).sort();
 
   // Calculate statistics
@@ -79,13 +79,13 @@ export default function GamesPage() {
     {
       key: "teams",
       header: "Match",
-      render: (match: Match) => (
+      render: (match: Match & { homeTeam?: Team; awayTeam?: Team; league?: League }) => (
         <div className="space-y-1">
           <div className="font-medium text-gray-900">
-            {match.homeTeamName} vs {match.awayTeamName}
+            {match.homeTeam?.name || match.homeTeamName} vs {match.awayTeam?.name || match.awayTeamName}
           </div>
           <div className="text-sm text-gray-500">
-            {match.leagueId ? `League ${match.leagueId}` : "Unknown League"}
+            {match.league?.name || "Unknown League"}
           </div>
         </div>
       ),

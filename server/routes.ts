@@ -121,6 +121,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Matches endpoints
+  app.get("/api/matches", async (req, res) => {
+    try {
+      const matches = await storage.getMatches();
+      res.json(matches);
+    } catch (error) {
+      console.error("Error fetching matches:", error);
+      res.status(500).json({ message: "Failed to fetch matches" });
+    }
+  });
+
   app.get("/api/teams/:teamId/matches", async (req, res) => {
     try {
       const teamId = parseInt(req.params.teamId);

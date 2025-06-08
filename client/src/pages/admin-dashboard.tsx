@@ -257,33 +257,57 @@ export default function AdminDashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-lg transition-shadow" 
+            onClick={() => handleStatClick('leagues')}
+          >
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Leagues</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
+                Total Leagues
+                <Eye className="h-4 w-4 ml-auto" />
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.totalLeagues || 0}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-lg transition-shadow" 
+            onClick={() => handleStatClick('teams')}
+          >
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Teams</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
+                Total Teams
+                <Eye className="h-4 w-4 ml-auto" />
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.totalTeams || 0}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-lg transition-shadow" 
+            onClick={() => handleStatClick('players')}
+          >
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Players</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
+                Total Players
+                <Eye className="h-4 w-4 ml-auto" />
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.totalPlayers || 0}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-lg transition-shadow" 
+            onClick={() => handleStatClick('matches')}
+          >
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Matches</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
+                Total Matches
+                <Eye className="h-4 w-4 ml-auto" />
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.totalMatches || 0}</div>
@@ -486,10 +510,87 @@ export default function AdminDashboard() {
                       <Input value={session.user?.email || ""} disabled />
                     </div>
                   </div>
+                  
+                  <div className="border-t pt-4">
+                    <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" className="w-full md:w-auto">
+                          <Key className="h-4 w-4 mr-2" />
+                          Change Password
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Change Admin Password</DialogTitle>
+                          <DialogDescription>
+                            Enter a new password for the admin account
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <Label htmlFor="newPassword">New Password</Label>
+                            <Input
+                              id="newPassword"
+                              type="password"
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              placeholder="Enter new password"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="confirmPassword">Confirm Password</Label>
+                            <Input
+                              id="confirmPassword"
+                              type="password"
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              placeholder="Confirm new password"
+                            />
+                          </div>
+                          {newPassword !== confirmPassword && confirmPassword && (
+                            <Alert variant="destructive">
+                              <AlertDescription>
+                                Passwords do not match
+                              </AlertDescription>
+                            </Alert>
+                          )}
+                          {changePasswordMutation.error && (
+                            <Alert variant="destructive">
+                              <AlertDescription>
+                                Failed to change password: {(changePasswordMutation.error as any)?.message || "Unknown error"}
+                              </AlertDescription>
+                            </Alert>
+                          )}
+                        </div>
+                        <DialogFooter>
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setShowPasswordDialog(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button 
+                            onClick={handlePasswordChange}
+                            disabled={!newPassword || !confirmPassword || newPassword !== confirmPassword || changePasswordMutation.isPending}
+                          >
+                            {changePasswordMutation.isPending ? (
+                              <>
+                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                Changing...
+                              </>
+                            ) : (
+                              "Change Password"
+                            )}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+
                   <Alert>
                     <Shield className="h-4 w-4" />
                     <AlertDescription>
-                      Admin credentials are managed securely. Contact system administrator to modify access.
+                      Admin credentials are managed securely. Changes take effect immediately.
                     </AlertDescription>
                   </Alert>
                 </div>
@@ -498,6 +599,9 @@ export default function AdminDashboard() {
           </TabsContent>
         </Tabs>
       </div>
+      
+      {/* Render data dialog */}
+      {renderDataDialog()}
     </div>
   );
 }

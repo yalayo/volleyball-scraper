@@ -99,6 +99,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin password change endpoint
+  app.post("/api/admin/change-password", requireAdmin, async (req, res) => {
+    try {
+      const { newPassword } = req.body;
+      const sessionData = req.session as SessionData;
+      
+      if (!newPassword) {
+        return res.status(400).json({ message: "New password is required" });
+      }
+      
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters long" });
+      }
+      
+      const adminId = sessionData.user!.id;
+      await storage.changeAdminPassword(adminId, newPassword);
+      
+      res.json({ message: "Password changed successfully" });
+    } catch (error) {
+      console.error("Error changing password:", error);
+      res.status(500).json({ message: "Failed to change password" });
+    }
+  });
+
   // Create admin user endpoint (one-time setup)
   app.post("/api/admin/setup", async (req, res) => {
     try {

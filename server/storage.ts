@@ -10,6 +10,7 @@ export interface IStorage {
   authenticateUser(username: string, password: string): Promise<User | null>;
   updateUserLastLogin(id: number): Promise<void>;
   createAdminUser(username: string, password: string, email?: string): Promise<User>;
+  changeAdminPassword(adminId: number, newPassword: string): Promise<void>;
 
   // League methods
   getLeagues(): Promise<League[]>;
@@ -165,6 +166,13 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return adminUser;
+  }
+
+  async changeAdminPassword(adminId: number, newPassword: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ password: newPassword })
+      .where(eq(users.id, adminId));
   }
 
   async getLeagues(): Promise<League[]> {

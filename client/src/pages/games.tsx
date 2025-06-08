@@ -13,10 +13,10 @@ import { formatDistanceToNow } from "date-fns";
 import type { Match, League, Team } from "@shared/schema";
 
 export default function GamesPage() {
-  const [selectedLeague, setSelectedLeague] = useState<string>("");
-  const [selectedTeam, setSelectedTeam] = useState<string>("");
-  const [homeTeam, setHomeTeam] = useState<string>("");
-  const [awayTeam, setAwayTeam] = useState<string>("");
+  const [selectedLeague, setSelectedLeague] = useState<string>("all");
+  const [selectedTeam, setSelectedTeam] = useState<string>("all");
+  const [homeTeam, setHomeTeam] = useState<string>("all");
+  const [awayTeam, setAwayTeam] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [matchDetailsModal, setMatchDetailsModal] = useState<{
     open: boolean;
@@ -37,10 +37,10 @@ export default function GamesPage() {
 
   // Filter matches based on selected criteria
   const filteredMatches = matches.filter(match => {
-    if (selectedLeague && match.leagueId !== parseInt(selectedLeague)) return false;
-    if (selectedTeam && !match.homeTeamName.includes(selectedTeam) && !match.awayTeamName.includes(selectedTeam)) return false;
-    if (homeTeam && !match.homeTeamName.includes(homeTeam)) return false;
-    if (awayTeam && !match.awayTeamName.includes(awayTeam)) return false;
+    if (selectedLeague !== "all" && match.leagueId !== parseInt(selectedLeague)) return false;
+    if (selectedTeam !== "all" && !match.homeTeamName.includes(selectedTeam) && !match.awayTeamName.includes(selectedTeam)) return false;
+    if (homeTeam !== "all" && !match.homeTeamName.includes(homeTeam)) return false;
+    if (awayTeam !== "all" && !match.awayTeamName.includes(awayTeam)) return false;
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
       return match.homeTeamName.toLowerCase().includes(search) || 
@@ -51,14 +51,14 @@ export default function GamesPage() {
   });
 
   const clearFilters = () => {
-    setSelectedLeague("");
-    setSelectedTeam("");
-    setHomeTeam("");
-    setAwayTeam("");
+    setSelectedLeague("all");
+    setSelectedTeam("all");
+    setHomeTeam("all");
+    setAwayTeam("all");
     setSearchTerm("");
   };
 
-  const hasActiveFilters = selectedLeague || selectedTeam || homeTeam || awayTeam || searchTerm;
+  const hasActiveFilters = selectedLeague !== "all" || selectedTeam !== "all" || homeTeam !== "all" || awayTeam !== "all" || searchTerm;
 
   // Get unique team names
   const teamNames = Array.from(new Set([
@@ -256,7 +256,7 @@ export default function GamesPage() {
                   <SelectValue placeholder="All leagues" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All leagues</SelectItem>
+                  <SelectItem value="all">All leagues</SelectItem>
                   {leagues.map((league) => (
                     <SelectItem key={league.id} value={league.id.toString()}>
                       {league.name}
@@ -274,7 +274,7 @@ export default function GamesPage() {
                   <SelectValue placeholder="All teams" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All teams</SelectItem>
+                  <SelectItem value="all">All teams</SelectItem>
                   {teamNames.map((teamName) => (
                     <SelectItem key={teamName} value={teamName}>
                       {teamName}
@@ -292,7 +292,7 @@ export default function GamesPage() {
                   <SelectValue placeholder="Any home team" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Any home team</SelectItem>
+                  <SelectItem value="all">Any home team</SelectItem>
                   {teamNames.map((teamName) => (
                     <SelectItem key={teamName} value={teamName}>
                       {teamName}
@@ -310,7 +310,7 @@ export default function GamesPage() {
                   <SelectValue placeholder="Any away team" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Any away team</SelectItem>
+                  <SelectItem value="all">Any away team</SelectItem>
                   {teamNames.map((teamName) => (
                     <SelectItem key={teamName} value={teamName}>
                       {teamName}

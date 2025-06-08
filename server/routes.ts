@@ -942,6 +942,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Player dashboard - get player's team information
+  app.get('/api/player-dashboard/team-info', async (req, res) => {
+    try {
+      const { samsPlayerId } = req.query;
+      
+      console.log("Team info API called with samsPlayerId:", samsPlayerId);
+      
+      if (!samsPlayerId) {
+        return res.status(400).json({ message: "SAMS Player ID is required" });
+      }
+      
+      // Find player by SAMS ID to get their team
+      const player = await storage.getPlayerBySamsId(samsPlayerId as string);
+      console.log("Player found for team info:", player);
+      
+      if (!player) {
+        return res.status(404).json({ message: "Player not found" });
+      }
+
+      // Get team information if player has a team
+      if (!player.teamId) {
+        console.log("Player has no teamId");
+        return res.json(null);
+      }
+      
+      console.log("Fetching team with ID:", player.teamId);
+      const team = await storage.getTeam(player.teamId);
+      console.log("Team found:", team);
+      res.json(team);
+    } catch (error) {
+      console.error("Error fetching team info:", error);
+      res.status(500).json({ message: "Failed to fetch team information" });
+    }
+  });
+
   // Player dashboard - get training sessions for player's team
   app.get('/api/player-dashboard/training-sessions', async (req, res) => {
     try {

@@ -488,6 +488,12 @@ export default function PlayerDashboard() {
     enabled: !!player?.samsPlayerId && player.verificationStatus === 'verified'
   });
 
+  // Fetch player's team information
+  const { data: teamInfo, isLoading: teamLoading } = useQuery({
+    queryKey: [`/api/player-dashboard/team-info?samsPlayerId=${player?.samsPlayerId}`],
+    enabled: !!player?.samsPlayerId && player.verificationStatus === 'verified'
+  });
+
   // Join training session mutation
   const joinSessionMutation = useMutation({
     mutationFn: async (sessionId: number) => {
@@ -632,24 +638,43 @@ export default function PlayerDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-gray-600">Player:</span>
-                    <span className="ml-2 font-medium">{player.firstName} {player.lastName}</span>
+                {teamLoading ? (
+                  <div className="text-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600 mx-auto"></div>
+                    <p className="mt-2 text-gray-600">Loading team information...</p>
                   </div>
-                  <div>
-                    <span className="text-gray-600">SAMS ID:</span>
-                    <span className="ml-2 font-medium">{player.samsPlayerId}</span>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Player:</span>
+                      <span className="ml-2 font-medium">{player.firstName} {player.lastName}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">SAMS ID:</span>
+                      <span className="ml-2 font-medium">{player.samsPlayerId}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Team:</span>
+                      <span className="ml-2 font-medium">
+                        {teamInfo ? teamInfo.name : 'No team assigned'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Status:</span>
+                      <Badge variant="default" className="ml-2">Verified Player</Badge>
+                    </div>
+                    {teamInfo?.location && (
+                      <div>
+                        <span className="text-gray-600">Location:</span>
+                        <span className="ml-2 font-medium">{teamInfo.location}</span>
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-gray-600">Team Access:</span>
+                      <span className="ml-2 text-green-700 font-medium">Full Access</span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-gray-600">Status:</span>
-                    <Badge variant="default" className="ml-2">Verified Player</Badge>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Team Access:</span>
-                    <span className="ml-2 text-green-700 font-medium">Full Access</span>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
 

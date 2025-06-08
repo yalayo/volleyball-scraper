@@ -570,6 +570,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Verify player by SAMS ID
+  app.post('/api/verify-player', async (req, res) => {
+    try {
+      const { verifierPlayerId, targetSamsId, isTrainer } = req.body;
+      
+      const verification = await storage.verifyPlayerBySamsId(verifierPlayerId, targetSamsId, isTrainer || false);
+      res.status(201).json({ 
+        success: true, 
+        message: "Player verification created successfully",
+        verification 
+      });
+    } catch (error) {
+      console.error("Error verifying player:", error);
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  // Get verification progress for a player
+  app.get('/api/verification-progress/:playerAccountId', async (req, res) => {
+    try {
+      const { playerAccountId } = req.params;
+      const progress = await storage.getVerificationProgress(parseInt(playerAccountId));
+      res.json(progress);
+    } catch (error) {
+      console.error("Error fetching verification progress:", error);
+      res.status(500).json({ message: "Failed to fetch verification progress" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

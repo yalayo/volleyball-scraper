@@ -383,3 +383,6 @@ export type TrainingSession = typeof trainingSessions.$inferSelect;
 
 export type InsertTrainingParticipant = z.infer<typeof insertTrainingParticipantSchema>;
 export type TrainingParticipant = typeof trainingParticipants.$inferSelect;
+
+export type InsertPlayerVerification = z.infer<typeof insertPlayerVerificationSchema>;
+export type PlayerVerification = typeof playerVerifications.$inferSelect;

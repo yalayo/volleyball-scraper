@@ -92,6 +92,18 @@ export interface IStorage {
   getTrainingSessionsByTeam(teamId: number): Promise<(TrainingSession & { organizer?: PlayerAccount; participants?: TrainingParticipant[] })[]>;
   createTrainingSession(session: InsertTrainingSession): Promise<TrainingSession>;
   joinTrainingSession(sessionId: number, playerAccountId: number): Promise<TrainingParticipant>;
+
+  // Player verification methods
+  getPlayerVerifications(playerAccountId: number): Promise<PlayerVerification[]>;
+  createPlayerVerification(verification: InsertPlayerVerification): Promise<PlayerVerification>;
+  getVerificationProgress(playerAccountId: number): Promise<{
+    teammateVerifications: number;
+    trainerVerification: boolean;
+    adminVerification: boolean;
+    totalNeeded: number;
+    isFullyVerified: boolean;
+  }>;
+  verifyPlayerBySamsId(verifierPlayerId: number, targetSamsId: string, isTrainer: boolean): Promise<PlayerVerification>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -936,6 +948,99 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return participation;
+  }
+
+  async getPlayerVerifications(playerAccountId: number): Promise<PlayerVerification[]> {
+    return await db
+      .select()
+      .from(playerVerifications)
+      .where(eq(playerVerifications.playerAccountId, playerAccountId));
+  }
+
+  async createPlayerVerification(verification: InsertPlayerVerification): Promise<PlayerVerification> {
+    const [newVerification] = await db
+      .insert(playerVerifications)
+      .values(verification)
+      .returning();
+    return newVerification;
+  }
+
+  async getVerificationProgress(playerAccountId: number): Promise<{
+    teammateVerifications: number;
+    trainerVerification: boolean;
+    adminVerification: boolean;
+    totalNeeded: number;
+    isFullyVerified: boolean;
+  }> {
+    const verifications = await this.getPlayerVerifications(playerAccountId);
+    
+    const teammateVerifications = verifications.filter(v => v.isApproved).length;
+    const trainerVerification = false; // Will be implemented when trainer roles are added
+    const adminVerification = false; // Will be implemented when admin roles are added
+    
+    const totalNeeded = trainerVerification || adminVerification ? 1 : 3;
+    const isFullyVerified = teammateVerifications >= totalNeeded || trainerVerification || adminVerification;
+    
+    return {
+      teammateVerifications,
+      trainerVerification,
+      adminVerification,
+      totalNeeded,
+      isFullyVerified
+    };
+  }
+
+  async verifyPlayerBySamsId(verifierPlayerId: number, targetSamsId: string, isTrainer: boolean = false): Promise<PlayerVerification> {
+    // Find the target player account by SAMS ID
+    const targetAccount = await this.getPlayerAccountBySamsId(targetSamsId);
+    if (!targetAccount) {
+      throw new Error("Player account not found");
+    }
+
+    // Check if this verifier has already verified this player
+    const existingVerification = await db
+      .select()
+      .from(playerVerifications)
+      .where(
+        and(
+          eq(playerVerifications.playerAccountId, targetAccount.id),
+          eq(playerVerifications.verifiedByPlayerId, verifierPlayerId)
+        )
+      );
+
+    if (existingVerification.length > 0) {
+      throw new Error("You have already verified this player");
+    }
+
+    // Create new verification
+    const verification = await this.createPlayerVerification({
+      playerAccountId: targetAccount.id,
+      verifiedByPlayerId: verifierPlayerId,
+      verificationNote: isTrainer ? "Verified by trainer" : "Verified by teammate",
+      isApproved: true
+    });
+
+    // Update verification count and status if needed
+    const progress = await this.getVerificationProgress(targetAccount.id);
+    if (progress.isFullyVerified) {
+      await db
+        .update(playerAccounts)
+        .set({
+          verificationStatus: "verified",
+          verificationCount: progress.teammateVerifications,
+          verifiedBy: isTrainer ? "trainer" : "teammates"
+        })
+        .where(eq(playerAccounts.id, targetAccount.id));
+    } else {
+      await db
+        .update(playerAccounts)
+        .set({
+          verificationCount: progress.teammateVerifications
+        })
+        .where(eq(playerAccounts.id, targetAccount.id));
+    }
+
+    return verification;
   }
 }
 

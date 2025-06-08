@@ -123,6 +123,22 @@ export const userTeamPreferences = pgTable("user_team_preferences", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Player accounts table for volleyball athlete onboarding
+export const playerAccounts = pgTable("player_accounts", {
+  id: serial("id").primaryKey(),
+  email: text("email").unique().notNull(),
+  passwordHash: text("password_hash").notNull(),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  samsPlayerId: text("sams_player_id").unique().notNull(), // Must match a player's playerId
+  playerId: integer("player_id").references(() => players.id), // Link to verified player
+  isVerified: boolean("is_verified").default(false),
+  isActive: boolean("is_active").default(true),
+  lastLoginAt: timestamp("last_login_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const leaguesRelations = relations(leagues, ({ many }) => ({
   teams: many(teams),
@@ -145,6 +161,17 @@ export const playersRelations = relations(players, ({ one }) => ({
   team: one(teams, {
     fields: [players.teamId],
     references: [teams.id],
+  }),
+  account: one(playerAccounts, {
+    fields: [players.id],
+    references: [playerAccounts.playerId],
+  }),
+}));
+
+export const playerAccountsRelations = relations(playerAccounts, ({ one }) => ({
+  player: one(players, {
+    fields: [playerAccounts.playerId],
+    references: [players.id],
   }),
 }));
 
@@ -278,3 +305,15 @@ export type TeamHighlight = typeof teamHighlights.$inferSelect;
 
 export type InsertUserTeamPreference = z.infer<typeof insertUserTeamPreferenceSchema>;
 export type UserTeamPreference = typeof userTeamPreferences.$inferSelect;
+
+export const insertPlayerAccountSchema = createInsertSchema(playerAccounts).omit({
+  id: true,
+  playerId: true,
+  isVerified: true,
+  lastLoginAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPlayerAccount = z.infer<typeof insertPlayerAccountSchema>;
+export type PlayerAccount = typeof playerAccounts.$inferSelect;

@@ -26,24 +26,55 @@ export default function VerificationGate({ playerAccount, onVerified }: Verifica
 
   // Get verification progress
   const { data: progress, isLoading: progressLoading } = useQuery({
-    queryKey: ['/api/verification-progress', playerAccount?.id],
+    queryKey: ['/api/verification-progress'],
+    queryFn: () => apiRequest(`/api/verification-progress?playerAccountId=${playerAccount?.id}`),
     enabled: !!playerAccount?.id,
     retry: false,
   });
 
+  // Function to fetch player info by SAMS ID
+  const fetchPlayerInfo = async (samsId: string) => {
+    if (!samsId.trim()) {
+      setPlayerInfo(null);
+      return;
+    }
+
+    // Check if trying to verify themselves
+    if (samsId === playerAccount?.samsPlayerId) {
+      toast({
+        title: "Error",
+        description: "You cannot verify yourself",
+        variant: "destructive",
+      });
+      setPlayerInfo(null);
+      return;
+    }
+
+    setIsLoadingPlayerInfo(true);
+    try {
+      const info = await apiRequest(`/api/player-info/${samsId}`);
+      setPlayerInfo(info);
+    } catch (error: any) {
+      setPlayerInfo(null);
+      if (error.message.includes('404')) {
+        toast({
+          title: "Player Not Found",
+          description: "No player found with this SAMS ID",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsLoadingPlayerInfo(false);
+    }
+  };
+
   // Verify another player mutation
   const verifyPlayerMutation = useMutation({
     mutationFn: async (targetSamsId: string) => {
-      return await apiRequest('/api/verify-player', {
-        method: 'POST',
-        body: JSON.stringify({
-          verifierPlayerId: playerAccount.id,
-          targetSamsId,
-          isTrainer: false
-        }),
-        headers: {
-          'Content-Type': 'application/json'
-        }
+      return apiRequest('/api/verify-player', 'POST', {
+        verifierPlayerId: playerAccount.id,
+        targetSamsId,
+        isTrainer: false
       });
     },
     onSuccess: () => {
@@ -53,6 +84,7 @@ export default function VerificationGate({ playerAccount, onVerified }: Verifica
       });
       setIsVerifyDialogOpen(false);
       setSamsIdToVerify("");
+      setPlayerInfo(null);
       queryClient.invalidateQueries({ queryKey: ['/api/verification-progress'] });
       queryClient.invalidateQueries({ queryKey: ['/api/player-account/check-verification'] });
     },
@@ -181,9 +213,44 @@ export default function VerificationGate({ playerAccount, onVerified }: Verifica
                     <Input
                       id="samsId"
                       value={samsIdToVerify}
-                      onChange={(e) => setSamsIdToVerify(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setSamsIdToVerify(value);
+                        if (value.length >= 3) {
+                          fetchPlayerInfo(value);
+                        } else {
+                          setPlayerInfo(null);
+                        }
+                      }}
                       placeholder="Enter SAMS player ID"
                     />
+                    {isLoadingPlayerInfo && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                        Loading player info...
+                      </div>
+                    )}
+                    {playerInfo && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <div className="text-sm">
+                          <p className="font-medium text-green-800">{playerInfo.name}</p>
+                          {playerInfo.position && (
+                            <p className="text-green-600">Position: {playerInfo.position}</p>
+                          )}
+                          {playerInfo.jerseyNumber && (
+                            <p className="text-green-600">Jersey: #{playerInfo.jerseyNumber}</p>
+                          )}
+                          {playerInfo.team && (
+                            <p className="text-green-600">Team: {playerInfo.team.name}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {samsIdToVerify.length >= 3 && !isLoadingPlayerInfo && !playerInfo && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                        <p className="text-sm text-red-800">No player found with this SAMS ID</p>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <DialogFooter>
@@ -195,7 +262,7 @@ export default function VerificationGate({ playerAccount, onVerified }: Verifica
                   </Button>
                   <Button
                     onClick={() => verifyPlayerMutation.mutate(samsIdToVerify)}
-                    disabled={!samsIdToVerify.trim() || verifyPlayerMutation.isPending}
+                    disabled={!playerInfo || verifyPlayerMutation.isPending}
                   >
                     {verifyPlayerMutation.isPending ? "Verifying..." : "Verify Player"}
                   </Button>

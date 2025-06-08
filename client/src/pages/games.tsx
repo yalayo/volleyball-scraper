@@ -251,7 +251,10 @@ export default function GamesPage() {
           <div className="mt-3 flex items-center space-x-2 text-sm text-blue-600">
             <Calendar className="w-4 h-4" />
             <span>
-              Matches from {dateRange.earliest.toLocaleDateString()} to {dateRange.latest.toLocaleDateString()}
+              {dateRange.hasActualDates 
+                ? `Match dates from ${dateRange.earliest.toLocaleDateString()} to ${dateRange.latest.toLocaleDateString()}`
+                : `Data scraped from ${dateRange.earliest.toLocaleDateString()} to ${dateRange.latest.toLocaleDateString()}`
+              }
             </span>
           </div>
         )}

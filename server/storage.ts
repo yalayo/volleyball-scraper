@@ -358,7 +358,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMatch(id: number): Promise<boolean> {
     const result = await db.delete(matches).where(eq(matches.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   // Team Stats methods implementation

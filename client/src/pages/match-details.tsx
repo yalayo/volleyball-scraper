@@ -1,11 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Users, Trophy, Clock, MapPin } from "lucide-react";
+import { ArrowLeft, Download, Users, Trophy, Clock, MapPin, FileText, RefreshCw } from "lucide-react";
 import { Link } from "wouter";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface MatchSet {
   id: number;
@@ -45,10 +47,30 @@ interface MatchDetails {
 export default function MatchDetails() {
   const [, params] = useRoute("/match/:id");
   const matchId = params?.id;
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: match, isLoading } = useQuery<MatchDetails>({
     queryKey: [`/api/matches/${matchId}/details`],
     enabled: !!matchId,
+  });
+
+  const processPdfMutation = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/matches/${matchId}/process-pdf`),
+    onSuccess: (data: any) => {
+      toast({
+        title: "PDF Processed Successfully",
+        description: `Extracted ${data.setsExtracted} sets and ${data.lineupsExtracted} lineups`,
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/matches/${matchId}/details`] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "PDF Processing Failed",
+        description: error.message || "Failed to process PDF scoresheet",
+        variant: "destructive",
+      });
+    },
   });
 
   if (isLoading) {
@@ -322,7 +344,7 @@ export default function MatchDetails() {
                     PDF scoresheet available but not yet processed.
                   </p>
                   <Button 
-                    onClick={processPdfMutation.mutate}
+                    onClick={() => processPdfMutation.mutate()}
                     disabled={processPdfMutation.isPending}
                     size="sm"
                     variant="outline"

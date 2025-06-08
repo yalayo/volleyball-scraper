@@ -96,7 +96,7 @@ interface TeamContactInfo {
   address: string | null;
 }
 
-async function scrapeTeamContact(
+export async function scrapeTeamContact(
   baseUrl: string,
   teamId: string
 ): Promise<TeamContactInfo> {

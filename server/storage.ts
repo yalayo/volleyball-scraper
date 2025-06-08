@@ -265,6 +265,8 @@ export class DatabaseStorage implements IStorage {
         samsId: teams.samsId,
         homepage: teams.homepage,
         logoUrl: teams.logoUrl,
+        contactEmail: teams.contactEmail,
+        contactAddress: teams.contactAddress,
         leagueId: teams.leagueId,
         isActive: teams.isActive,
         createdAt: teams.createdAt,

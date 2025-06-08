@@ -1,83 +1,55 @@
-import axios from 'axios';
-import * as cheerio from 'cheerio';
+import { scrapeTeamContact } from './server/scraper.js';
 
-// Test the contact extraction functionality
+// Test contact extraction with real team data
 async function testContactExtraction() {
   try {
-    // Test with a real team ID from our database
-    const baseUrl = 'https://www.volleyball-verband.de/cms/index.php';
-    const teamId = '70108584'; // Real team ID: Kevelaerer SV II
+    console.log('Testing contact extraction with real team data...');
     
-    // Construct contact URL
-    const contactUrl = `${baseUrl}?LeaguePresenter.teamListView.view=contact&LeaguePresenter.teamListView.teamId=${teamId}`;
+    // Test with a known team ID from the database
+    const teamId = '70108584'; // Kevelaerer SV II
+    const baseUrl = 'https://www.volleyball-verband.de/cms/index.php?Spielbetrieb.do&LeaguePresenter.matchSeriesId=70061247&LeaguePresenter.view=teamOverview';
+    console.log(`Testing contact extraction for team ID: ${teamId}`);
     
-    console.log('Testing contact extraction for team ID:', teamId);
-    console.log('Contact URL:', contactUrl);
+    const contactInfo = await scrapeTeamContact(baseUrl, teamId);
     
-    // Make request to contact page
-    const response = await axios.get(contactUrl, {
-      timeout: 10000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      }
-    });
+    console.log('\n=== Contact Extraction Results ===');
+    console.log(`Team ID: ${teamId}`);
+    console.log(`Email: ${contactInfo.email || 'Not found'}`);
+    console.log(`Address: ${contactInfo.address || 'Not found'}`);
     
-    const $ = cheerio.load(response.data);
+    if (contactInfo.email || contactInfo.address) {
+      console.log('✅ Contact extraction successful');
+    } else {
+      console.log('⚠️ No contact information found');
+    }
     
-    console.log('\n=== Contact Page Content ===');
-    console.log('Page title:', $('title').text());
+    // Test with another team ID
+    const teamId2 = '70108582'; // Another team from the database
+    console.log(`\nTesting contact extraction for team ID: ${teamId2}`);
     
-    // Look for email addresses
-    const emails = [];
-    $('a[href^="mailto:"]').each((_, element) => {
-      const href = $(element).attr('href');
-      if (href) {
-        const email = href.replace('mailto:', '');
-        emails.push(email);
-      }
-    });
+    const contactInfo2 = await scrapeTeamContact(teamId2);
     
-    // Look for address information
-    const addressDivs = [];
-    $('div').each((_, element) => {
-      const text = $(element).text().trim();
-      if (text && (text.includes('Straße') || text.includes('str.') || text.includes('Platz') || 
-                   text.includes('Weg') || text.includes('Gasse') || text.match(/\d{5}\s+\w+/))) {
-        // Check if it's not too long (likely to be an address)
-        if (text.length < 200 && text.length > 10) {
-          addressDivs.push(text);
-        }
-      }
-    });
+    console.log('\n=== Contact Extraction Results 2 ===');
+    console.log(`Team ID: ${teamId2}`);
+    console.log(`Email: ${contactInfo2.email || 'Not found'}`);
+    console.log(`Address: ${contactInfo2.address || 'Not found'}`);
     
-    console.log('\n=== Extracted Information ===');
-    console.log('Emails found:', emails);
-    console.log('Potential addresses found:', addressDivs);
-    
-    // Test the actual extraction function
-    const extractedEmail = emails.length > 0 ? emails[0] : null;
-    const extractedAddress = addressDivs.length > 0 ? addressDivs[0] : null;
-    
-    console.log('\n=== Final Extraction Results ===');
-    console.log('Email:', extractedEmail);
-    console.log('Address:', extractedAddress);
-    
-    return {
-      email: extractedEmail,
-      address: extractedAddress
-    };
+    if (contactInfo2.email || contactInfo2.address) {
+      console.log('✅ Contact extraction successful');
+    } else {
+      console.log('⚠️ No contact information found');
+    }
     
   } catch (error) {
-    console.error('Error testing contact extraction:', error.message);
-    return null;
+    console.error('Error in contact extraction test:', error);
   }
 }
 
 // Run the test
-testContactExtraction().then(result => {
-  if (result) {
-    console.log('\n✅ Contact extraction test completed successfully');
-  } else {
-    console.log('\n❌ Contact extraction test failed');
-  }
+testContactExtraction().then(() => {
+  console.log('Contact extraction test completed');
+  process.exit(0);
+}).catch(error => {
+  console.error('Test failed:', error);
+  process.exit(1);
 });

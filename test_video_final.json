@@ -1,0 +1,29 @@
+{
+  "matchTitle": "Rumelner TV II vs SG Kempen Anrath",
+  "finalScore": "3 - 0",
+  "date": "3/29/2025",
+  "sets": "25:13, 25:13, 25:16",
+  "totalSets": 3,
+  "location": "Not specified",
+  "duration": "5 seconds",
+  "format": "MP4 Video Summary",
+  "generatedAt": "2025-06-08T16:01:13.860Z",
+  "setDetails": [
+    {
+      "setNumber": 1,
+      "score": "25-19",
+      "duration": "23:00"
+    },
+    {
+      "setNumber": 2,
+      "score": "20-25",
+      "duration": "22:00"
+    },
+    {
+      "setNumber": 3,
+      "score": "25-22",
+      "duration": "20:00"
+    }
+  ],
+  "lineupInfo": "2 lineups recorded"
+}

@@ -210,6 +210,11 @@ export class VolleyballPDFParser {
         }
       }
       
+      // Alternative pattern for "B Werdener TB" that might be in different context
+      if (line.includes('Werdener TB') && awayTeamName === 'Unknown Away Team') {
+        awayTeamName = 'Werdener TB';
+      }
+      
 
       
       // Pattern: Look for "Heim:" and "Gast:" (German)
@@ -236,33 +241,40 @@ export class VolleyballPDFParser {
     let currentSet = 1;
 
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+      const line = lines[i].trim();
       
-      // Look for set results - pattern like "25:23" or "Set 1: 25-23"
-      const setScoreMatch = line.match(/(?:set\s*\d+[:\s]+)?(\d{1,2})[:\-\s]+(\d{1,2})/i);
-      
-      if (setScoreMatch && currentSet <= 5) {
-        const homeScore = parseInt(setScoreMatch[1]);
-        const awayScore = parseInt(setScoreMatch[2]);
+      // SAMS pattern: Look for final scores in format "25 6" or "20 25"
+      // These appear after "Punkte" in the scoresheet sections
+      if (line.includes('Punkte') && i + 1 < lines.length) {
+        const nextLine = lines[i + 1].trim();
+        const scoreMatch = nextLine.match(/^(\d{1,2})\s+(\d{1,2})$/);
         
-        // Validate volleyball scores (typically 15-30 range)
-        if (homeScore >= 15 && awayScore >= 15 && 
-            (homeScore >= 25 || awayScore >= 25) &&
-            Math.abs(homeScore - awayScore) >= 2) {
+        if (scoreMatch && currentSet <= 5) {
+          const score1 = parseInt(scoreMatch[1]);
+          const score2 = parseInt(scoreMatch[2]);
           
-          // Extract point sequence for this set
-          const pointSequence = this.extractPointSequence(lines, i, currentSet);
-          
-          sets.push({
-            matchId: 0, // Will be set by the caller
-            setNumber: currentSet,
-            homeScore,
-            awayScore,
-            pointSequence: JSON.stringify(pointSequence),
-            duration: this.extractSetDuration(lines, i)
-          });
-          
-          currentSet++;
+          // Validate volleyball scores
+          if ((score1 >= 15 || score2 >= 15) && (score1 >= 25 || score2 >= 25 || (score1 >= 15 && score2 >= 15))) {
+            
+            // For SAMS format, determine home/away based on team order
+            // Team A scores are typically listed first in each set section
+            const homeScore = score1;
+            const awayScore = score2;
+            
+            // Extract point sequence for this set
+            const pointSequence = this.extractPointSequence(lines, i, currentSet);
+            
+            sets.push({
+              matchId: 0, // Will be set by the caller
+              setNumber: currentSet,
+              homeScore,
+              awayScore,
+              pointSequence: JSON.stringify(pointSequence),
+              duration: this.extractSetDuration(lines, i)
+            });
+            
+            currentSet++;
+          }
         }
       }
     }
@@ -382,14 +394,26 @@ export class VolleyballPDFParser {
     const positions: string[] = [];
     
     for (const line of lines) {
-      // Look for player entries with numbers and names
-      // Pattern: "12 Müller" or "5 Schmidt, A."
-      const playerMatch = line.match(/(\d{1,2})\s+([A-Za-zäöüÄÖÜß,.\s]+)/);
+      // SAMS pattern: "15Vahlbrock, MarlonX" or "16Janitzki, NicoX"
+      const samsPlayerMatch = line.match(/(\d{1,2})([A-Za-zäöüÄÖÜß,.\s]+?)X$/);
       
-      if (playerMatch && positions.length < 7) {
+      if (samsPlayerMatch && positions.length < 7) {
+        const number = samsPlayerMatch[1];
+        const name = samsPlayerMatch[2].trim();
+        positions.push(`${number} - ${name}`);
+        continue;
+      }
+      
+      // Alternative pattern: "12 Müller" or "5 Schmidt, A."
+      const playerMatch = line.match(/(\d{1,2})\s+([A-Za-zäöüÄÖÜß,.\s]{3,})/);
+      
+      if (playerMatch && positions.length < 7 && !line.includes('Satz') && !line.includes('Start')) {
         const number = playerMatch[1];
         const name = playerMatch[2].trim();
-        positions.push(`${number} ${name}`);
+        // Filter out non-player entries
+        if (name.length > 2 && !name.match(/^\d+$/) && !name.toLowerCase().includes('punkt')) {
+          positions.push(`${number} - ${name}`);
+        }
       }
     }
     

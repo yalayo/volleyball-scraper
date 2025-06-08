@@ -53,21 +53,30 @@ export class VolleyballPDFParser {
       // Parse actual PDF content using pdf-parse
       console.log(`Processing volleyball scoresheet from SAMS system`);
       try {
-        const pdfParse = require('pdf-parse');
-        const pdfData = await pdfParse(pdfBuffer);
+        const { default: pdfParse } = await import('pdf-parse');
+        const options = {
+          normalizeWhitespace: false,
+          disableCombineTextItems: false
+        };
+        const pdfData = await pdfParse(pdfBuffer, options);
         
-        if (pdfData && pdfData.text) {
+        if (pdfData && pdfData.text && pdfData.text.length > 100) {
           console.log(`Extracted ${pdfData.text.length} characters from PDF`);
-          console.log(`PDF content sample: ${pdfData.text.substring(0, 500)}...`);
-          return this.extractMatchData(pdfData.text);
+          console.log(`PDF content sample: ${pdfData.text.substring(0, 800)}...`);
+          const extractedData = this.extractMatchData(pdfData.text);
+          
+          if (extractedData && (extractedData.sets.length > 0 || extractedData.lineups.length > 0)) {
+            return extractedData;
+          } else {
+            console.log('No volleyball data patterns found in PDF text');
+            return null;
+          }
         } else {
-          console.log('No text content extracted from PDF');
+          console.log('Insufficient text content extracted from PDF');
           return null;
         }
-      } catch (pdfError) {
-        console.log('PDF parsing library error, falling back to basic extraction');
-        // For now, return null since we need authentic data extraction
-        // In a production environment, we would implement alternative PDF parsing
+      } catch (pdfError: any) {
+        console.log('PDF parsing error:', pdfError?.message || 'Unknown error');
         return null;
       }
       

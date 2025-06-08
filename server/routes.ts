@@ -353,31 +353,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Scraping endpoints
-  app.post("/api/scrape", async (req, res) => {
+  // Admin-protected scraping endpoints
+  app.post("/api/scrape", requireAdmin, async (req, res) => {
     try {
-      const { url, leagueName, category } = req.body;
+      const { url } = req.body;
 
-      if (!url || !leagueName || !category) {
-        return res.status(400).json({ 
-          message: "Missing required fields: url, leagueName, category" 
-        });
+      if (!url) {
+        return res.status(400).json({ message: "URL is required" });
       }
 
       // Start scraping in background
-      scrapeVolleyballData(url, leagueName, category, storage)
-        .catch(error => {
-          console.error("Background scraping error:", error);
-        });
+      await scrapeVolleyballData([url], storage);
 
-      res.json({ message: "Scraping started successfully" });
-    } catch (error) {
+      res.json({ message: "Scraping completed successfully" });
+    } catch (error: any) {
       console.error("Error starting scrape:", error);
-      res.status(500).json({ message: "Failed to start scraping" });
+      res.status(500).json({ message: "Scraping failed", error: error.message });
     }
   });
 
-  app.post("/api/scrape/league/:id", async (req, res) => {
+  app.post("/api/scrape-all", requireAdmin, async (req, res) => {
+    try {
+      const predefinedUrls = [
+        "https://www.volleyball.nrw/volleyball/spielbetrieb/meisterschaft/?spielbetrieb_option_saison=2023/24&tx_nwvvportal%5Baction%5D=show&tx_nwvvportal%5Bcontroller%5D=Competition&tx_nwvvportal%5Bcompetition%5D=57098421",
+        "https://www.volleyball.nrw/volleyball/spielbetrieb/meisterschaft/?spielbetrieb_option_saison=2023/24&tx_nwvvportal%5Baction%5D=show&tx_nwvvportal%5Bcontroller%5D=Competition&tx_nwvvportal%5Bcompetition%5D=57098408"
+      ];
+      
+      await scrapeVolleyballData(predefinedUrls, storage);
+      res.json({ message: "All scraping completed successfully" });
+    } catch (error: any) {
+      console.error("Bulk scraping error:", error);
+      res.status(500).json({ message: "Bulk scraping failed", error: error.message });
+    }
+  });
+
+  app.post("/api/scrape/league/:id", requireAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const league = await storage.getLeague(id);
@@ -391,15 +401,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Start scraping in background
-      scrapeVolleyballData(league.url, league.name, league.category, storage)
-        .catch(error => {
-          console.error("Background scraping error:", error);
-        });
+      await scrapeVolleyballData([league.url], storage);
 
-      res.json({ message: "League scraping started successfully" });
-    } catch (error) {
+      res.json({ message: "League scraping completed successfully" });
+    } catch (error: any) {
       console.error("Error starting league scrape:", error);
-      res.status(500).json({ message: "Failed to start league scraping" });
+      res.status(500).json({ message: "Failed to start league scraping", error: error.message });
     }
   });
 

@@ -1175,9 +1175,33 @@ export async function scrapeVolleyballData(
           const createdMatch = await storageInstance.createMatch(matchData);
           matchCount++;
           
-          // Process PDF scoresheet if URL is available (temporarily disabled)
+          // Process PDF scoresheet if URL is available
           if (matchData.scoresheetPdfUrl && createdMatch.id) {
-            console.log(`PDF found for match ${createdMatch.id}: ${matchData.scoresheetPdfUrl} (processing coming soon)`);
+            console.log(`Processing PDF for match ${createdMatch.id}: ${matchData.scoresheetPdfUrl}`);
+            try {
+              const { pdfParser } = await import('./pdf-parser');
+              const pdfData = await pdfParser.parsePDFFromUrl(matchData.scoresheetPdfUrl);
+              
+              if (pdfData && pdfData.sets.length > 0) {
+                // Store match sets data
+                for (const setData of pdfData.sets) {
+                  setData.matchId = createdMatch.id;
+                  await storageInstance.createMatchSet(setData);
+                }
+                
+                // Store match lineups data
+                for (const lineupData of pdfData.lineups) {
+                  lineupData.matchId = createdMatch.id;
+                  await storageInstance.createMatchLineup(lineupData);
+                }
+                
+                console.log(`Successfully extracted ${pdfData.sets.length} sets and ${pdfData.lineups.length} lineups from PDF`);
+              } else {
+                console.log(`No detailed data extracted from PDF for match ${createdMatch.id}`);
+              }
+            } catch (error) {
+              console.error(`Failed to process PDF for match ${createdMatch.id}:`, error);
+            }
           }
           
           // Update team statistics

@@ -312,9 +312,36 @@ export default function MatchDetails() {
       {match.sets.length === 0 && (
         <Card>
           <CardContent className="text-center py-8">
-            <p className="text-gray-500">
-              No detailed match data available. Detailed analysis is extracted from official scoresheets.
-            </p>
+            <div className="space-y-4">
+              <p className="text-gray-500">
+                No detailed match data available. Detailed analysis is extracted from official scoresheets.
+              </p>
+              {match.scoresheetPdfUrl && (
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-400">
+                    PDF scoresheet available but not yet processed.
+                  </p>
+                  <Button 
+                    onClick={processPdfMutation.mutate}
+                    disabled={processPdfMutation.isPending}
+                    size="sm"
+                    variant="outline"
+                  >
+                    {processPdfMutation.isPending ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Processing PDF...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="h-4 w-4 mr-2" />
+                        Extract Analytics from PDF
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}

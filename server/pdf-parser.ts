@@ -1,5 +1,4 @@
-// Temporarily disabled due to import issues
-// import pdfParse from 'pdf-parse';
+const pdfParse = require('pdf-parse');
 import axios from 'axios';
 import type { InsertMatchSet, InsertMatchLineup } from '@shared/schema';
 

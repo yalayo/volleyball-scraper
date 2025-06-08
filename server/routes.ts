@@ -527,6 +527,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PDF Processing endpoint for existing matches
+  app.post("/api/matches/:id/process-pdf", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const matchId = parseInt(req.params.id);
+      const match = await storage.getMatch(matchId);
+      
+      if (!match) {
+        return res.status(404).json({ message: "Match not found" });
+      }
+      
+      if (!match.scoresheetPdfUrl) {
+        return res.status(400).json({ message: "No PDF URL available for this match" });
+      }
+      
+      // Check if PDF data already exists
+      const existingSets = await storage.getMatchSets(matchId);
+      if (existingSets.length > 0) {
+        return res.status(200).json({ message: "PDF data already exists for this match" });
+      }
+      
+      console.log(`Processing PDF for match ${matchId}: ${match.scoresheetPdfUrl}`);
+      
+      const { pdfParser } = await import('./pdf-parser');
+      const pdfData = await pdfParser.parsePDFFromUrl(match.scoresheetPdfUrl);
+      
+      if (pdfData && pdfData.sets.length > 0) {
+        // Store match sets data
+        for (const setData of pdfData.sets) {
+          setData.matchId = matchId;
+          await storage.createMatchSet(setData);
+        }
+        
+        // Store match lineups data
+        for (const lineupData of pdfData.lineups) {
+          lineupData.matchId = matchId;
+          await storage.createMatchLineup(lineupData);
+        }
+        
+        res.json({ 
+          message: "PDF processed successfully",
+          setsExtracted: pdfData.sets.length,
+          lineupsExtracted: pdfData.lineups.length
+        });
+      } else {
+        res.status(400).json({ message: "No detailed data could be extracted from PDF" });
+      }
+    } catch (error: any) {
+      console.error("Error processing PDF:", error);
+      res.status(500).json({ 
+        message: "Failed to process PDF",
+        error: error.message 
+      });
+    }
+  });
+
   // Team Highlights endpoints
   app.get("/api/team-highlights", async (req, res) => {
     try {

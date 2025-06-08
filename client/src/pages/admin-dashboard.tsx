@@ -21,7 +21,10 @@ import {
   Activity,
   TrendingUp,
   Eye,
-  Key
+  Key,
+  Mail,
+  MapPin,
+  CheckCircle
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -330,6 +333,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="leagues">
               <BarChart3 className="h-4 w-4 mr-2" />
               Leagues
+            </TabsTrigger>
+            <TabsTrigger value="teams">
+              <Users className="h-4 w-4 mr-2" />
+              Teams & Contacts
             </TabsTrigger>
             <TabsTrigger value="verification">
               <Shield className="h-4 w-4 mr-2" />
@@ -641,6 +648,93 @@ export default function AdminDashboard() {
                     </AlertDescription>
                   </Alert>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="teams" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Teams & Contact Information</CardTitle>
+                <CardDescription>
+                  View teams with extracted contact details from volleyball federation
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {teams && teams.length > 0 ? (
+                  <div className="space-y-4">
+                    <div className="grid gap-4">
+                      {teams
+                        .filter(team => team.contactEmail || team.contactAddress)
+                        .map((team) => (
+                          <div key={team.id} className="border rounded-lg p-4 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <h3 className="font-semibold text-lg">{team.name}</h3>
+                              <Badge variant="outline" className="text-green-600">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Contact Available
+                              </Badge>
+                            </div>
+                            
+                            <div className="grid md:grid-cols-2 gap-4 text-sm">
+                              <div className="space-y-1">
+                                <div className="flex items-center text-gray-600">
+                                  <Mail className="h-4 w-4 mr-2" />
+                                  <span className="font-medium">Email:</span>
+                                </div>
+                                <div className="ml-6">
+                                  {team.contactEmail ? (
+                                    <a 
+                                      href={`mailto:${team.contactEmail}`}
+                                      className="text-blue-600 hover:underline"
+                                    >
+                                      {team.contactEmail}
+                                    </a>
+                                  ) : (
+                                    <span className="text-gray-400">Not available</span>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              <div className="space-y-1">
+                                <div className="flex items-center text-gray-600">
+                                  <MapPin className="h-4 w-4 mr-2" />
+                                  <span className="font-medium">Address:</span>
+                                </div>
+                                <div className="ml-6">
+                                  {team.contactAddress ? (
+                                    <span>{team.contactAddress}</span>
+                                  ) : (
+                                    <span className="text-gray-400">Not available</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {team.location && (
+                              <div className="text-sm text-gray-600 border-t pt-2 mt-2">
+                                <span className="font-medium">Team Location:</span> {team.location}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                    
+                    {teams.filter(team => team.contactEmail || team.contactAddress).length === 0 && (
+                      <div className="text-center py-8 text-gray-500">
+                        <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>No teams with contact information found yet.</p>
+                        <p className="text-sm">Contact details will appear here after scraping leagues.</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No teams found in the database.</p>
+                    <p className="text-sm">Teams will appear here after scraping league data.</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

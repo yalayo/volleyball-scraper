@@ -4,9 +4,9 @@ import * as cheerio from 'cheerio';
 // Test the contact extraction functionality
 async function testContactExtraction() {
   try {
-    // Test with a specific team ID from the Werdener TB team
+    // Test with a real team ID from our database
     const baseUrl = 'https://www.volleyball-verband.de/cms/index.php';
-    const teamId = '27050'; // Example team ID
+    const teamId = '70108584'; // Real team ID: Kevelaerer SV II
     
     // Construct contact URL
     const contactUrl = `${baseUrl}?LeaguePresenter.teamListView.view=contact&LeaguePresenter.teamListView.teamId=${teamId}`;

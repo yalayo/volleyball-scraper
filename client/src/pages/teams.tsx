@@ -47,17 +47,6 @@ export default function Teams() {
       (selectedStatus === "active" && team.isActive) ||
       (selectedStatus === "inactive" && !team.isActive);
     
-    // Debug logging for league filtering
-    if (selectedLeague !== "all") {
-      console.log("Filtering debug:", {
-        teamName: team.name,
-        teamLeagueId: team.leagueId,
-        selectedLeague,
-        matchesLeague,
-        leagueIdAsString: team.leagueId?.toString()
-      });
-    }
-    
     return matchesSearch && matchesLeague && matchesStatus;
   }) || [];
 

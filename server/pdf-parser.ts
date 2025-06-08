@@ -195,26 +195,18 @@ export class VolleyballPDFParser {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       
-      // SAMS scoresheets often have team names in format "Team A vs Team B" or separated by specific patterns
-      const teamVsMatch = line.match(/(.+?)\s+(?:vs|gegen|—|-)\s+(.+)/i);
-      if (teamVsMatch) {
-        homeTeamName = teamVsMatch[1].trim();
-        awayTeamName = teamVsMatch[2].trim();
-        break;
+      // SAMS pattern: "A TuB Bocholt..." and "B Werdener TB"
+      if (line.match(/^A\s+(.+)/)) {
+        const teamMatch = line.match(/^A\s+(.+)/);
+        if (teamMatch) {
+          homeTeamName = teamMatch[1].replace(/\.\.\.$/, '').trim();
+        }
       }
       
-      // Look for team names in table headers or match info sections
-      if (line.toLowerCase().includes('mannschaft') || line.toLowerCase().includes('team')) {
-        const nextLines = lines.slice(i, i + 5);
-        for (const nextLine of nextLines) {
-          if (nextLine.length > 3 && !nextLine.match(/^\d+$/) && !nextLine.toLowerCase().includes('satz')) {
-            if (homeTeamName === 'Unknown Home Team') {
-              homeTeamName = nextLine.trim();
-            } else if (awayTeamName === 'Unknown Away Team') {
-              awayTeamName = nextLine.trim();
-              break;
-            }
-          }
+      if (line.match(/^B\s+(.+)/)) {
+        const teamMatch = line.match(/^B\s+(.+)/);
+        if (teamMatch) {
+          awayTeamName = teamMatch[1].trim();
         }
       }
       

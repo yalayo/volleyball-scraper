@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
   Shield, 
@@ -310,13 +311,23 @@ export default function AdminDashboard() {
                   
                   <div className="space-y-2">
                     <Label htmlFor="category">Category</Label>
-                    <Input
-                      id="category"
-                      placeholder="e.g., Verbandsliga, Landesliga, etc."
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      disabled={scrapeMutation.isPending}
-                    />
+                    <Select value={category} onValueChange={setCategory} disabled={scrapeMutation.isPending}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select league category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Oberliga">Oberliga</SelectItem>
+                        <SelectItem value="Verbandsliga">Verbandsliga</SelectItem>
+                        <SelectItem value="Landesliga">Landesliga</SelectItem>
+                        <SelectItem value="Bezirksliga">Bezirksliga</SelectItem>
+                        <SelectItem value="Kreisliga">Kreisliga</SelectItem>
+                        <SelectItem value="Regionalliga">Regionalliga</SelectItem>
+                        <SelectItem value="Bundesliga">Bundesliga</SelectItem>
+                        <SelectItem value="1. Liga">1. Liga</SelectItem>
+                        <SelectItem value="2. Liga">2. Liga</SelectItem>
+                        <SelectItem value="3. Liga">3. Liga</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   
                   <Button 

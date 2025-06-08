@@ -1,6 +1,7 @@
 import { users, leagues, teams, players, scrapeLogs, matches, matchSets, matchLineups, teamStats, teamHighlights, userTeamPreferences, playerAccounts, trainingSessions, trainingParticipants, playerVerifications, type User, type InsertUser, type League, type InsertLeague, type Team, type InsertTeam, type Player, type InsertPlayer, type ScrapeLog, type InsertScrapeLog, type Match, type InsertMatch, type MatchSet, type InsertMatchSet, type MatchLineup, type InsertMatchLineup, type TeamStats, type InsertTeamStats, type TeamHighlight, type InsertTeamHighlight, type UserTeamPreference, type InsertUserTeamPreference, type PlayerAccount, type InsertPlayerAccount, type TrainingSession, type InsertTrainingSession, type TrainingParticipant, type InsertTrainingParticipant, type PlayerVerification, type InsertPlayerVerification } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, count, sql, or, and } from "drizzle-orm";
+import bcrypt from "bcrypt";
 
 export interface IStorage {
   // User methods
@@ -149,8 +150,8 @@ export class DatabaseStorage implements IStorage {
       return null;
     }
     
-    // Simple password comparison (in production, use bcrypt)
-    if (user.password === password) {
+    // Use bcrypt for secure password comparison
+    if (user.password && await bcrypt.compare(password, user.password)) {
       return user;
     }
     
@@ -165,11 +166,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAdminUser(username: string, password: string, email?: string): Promise<User> {
+    const hashedPassword = await bcrypt.hash(password, 10);
     const [adminUser] = await db
       .insert(users)
       .values({
         username,
-        password,
+        password: hashedPassword,
         email,
         role: "admin",
         isActive: true
@@ -179,9 +181,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async changeAdminPassword(adminId: number, newPassword: string): Promise<void> {
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
     await db
       .update(users)
-      .set({ password: newPassword })
+      .set({ password: hashedPassword })
       .where(eq(users.id, adminId));
   }
 

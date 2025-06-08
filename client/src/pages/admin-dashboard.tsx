@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
   Shield, 
   Database, 
@@ -16,7 +17,9 @@ import {
   LogOut,
   Settings,
   Activity,
-  TrendingUp
+  TrendingUp,
+  Eye,
+  Key
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -34,6 +37,11 @@ interface AdminSession {
 export default function AdminDashboard() {
   const [newUrl, setNewUrl] = useState("");
   const [isScrapingAll, setIsScrapingAll] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [showDataDialog, setShowDataDialog] = useState(false);
+  const [dataType, setDataType] = useState<'leagues' | 'teams' | 'players' | 'matches'>('leagues');
   const queryClient = useQueryClient();
 
   // Check admin session
@@ -52,6 +60,22 @@ export default function AdminDashboard() {
   const { data: leagues } = useQuery({
     queryKey: ["/api/admin/leagues"],
     enabled: session?.isAuthenticated
+  });
+
+  // Get detailed data for dialogs
+  const { data: teams } = useQuery({
+    queryKey: ["/api/teams"],
+    enabled: !!session?.isAuthenticated && dataType === 'teams' && showDataDialog
+  });
+
+  const { data: players } = useQuery({
+    queryKey: ["/api/players"],
+    enabled: !!session?.isAuthenticated && dataType === 'players' && showDataDialog
+  });
+
+  const { data: matches } = useQuery({
+    queryKey: ["/api/matches"],
+    enabled: !!session?.isAuthenticated && dataType === 'matches' && showDataDialog
   });
 
   // Logout mutation
@@ -85,6 +109,17 @@ export default function AdminDashboard() {
     }
   });
 
+  // Password change mutation
+  const changePasswordMutation = useMutation({
+    mutationFn: (data: { newPassword: string }) => 
+      apiRequest("POST", "/api/admin/change-password", data),
+    onSuccess: () => {
+      setShowPasswordDialog(false);
+      setNewPassword("");
+      setConfirmPassword("");
+    }
+  });
+
   // Redirect if not authenticated
   useEffect(() => {
     if (!sessionLoading && !session?.isAuthenticated) {
@@ -110,6 +145,81 @@ export default function AdminDashboard() {
   const handleScrapeAll = () => {
     setIsScrapingAll(true);
     scrapeAllMutation.mutate();
+  };
+
+  const handleStatClick = (type: 'leagues' | 'teams' | 'players' | 'matches') => {
+    setDataType(type);
+    setShowDataDialog(true);
+  };
+
+  const handlePasswordChange = () => {
+    if (newPassword !== confirmPassword) {
+      return;
+    }
+    changePasswordMutation.mutate({ newPassword });
+  };
+
+  const renderDataDialog = () => {
+    let data: any[] = [];
+    let title = "";
+    
+    switch (dataType) {
+      case 'leagues':
+        data = leagues || [];
+        title = "All Leagues";
+        break;
+      case 'teams':
+        data = teams || [];
+        title = "All Teams";
+        break;
+      case 'players':
+        data = players || [];
+        title = "All Players";
+        break;
+      case 'matches':
+        data = matches || [];
+        title = "All Matches";
+        break;
+    }
+
+    return (
+      <Dialog open={showDataDialog} onOpenChange={setShowDataDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription>
+              Complete list of {dataType} in the system
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {data.length > 0 ? (
+              <div className="grid gap-3">
+                {data.map((item: any, index: number) => (
+                  <div key={item.id || index} className="border rounded-lg p-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-medium">{item.name || item.title}</h4>
+                        {item.category && <p className="text-sm text-gray-600">{item.category}</p>}
+                        {item.location && <p className="text-sm text-gray-500">{item.location}</p>}
+                        {item.team?.name && <p className="text-sm text-gray-500">Team: {item.team.name}</p>}
+                        {item.homeTeam?.name && <p className="text-sm text-gray-500">{item.homeTeam.name} vs {item.awayTeam?.name}</p>}
+                      </div>
+                      {item.isActive !== undefined && (
+                        <Badge variant={item.isActive ? "default" : "secondary"}>
+                          {item.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-gray-500 py-8">No {dataType} found</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
   };
 
   return (

@@ -151,6 +151,30 @@ export const playerVerifications = pgTable("player_verifications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Training sessions table for team coordination
+export const trainingSessions = pgTable("training_sessions", {
+  id: serial("id").primaryKey(),
+  teamId: integer("team_id").references(() => teams.id).notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  sessionDate: timestamp("session_date").notNull(),
+  location: text("location"),
+  organizerId: integer("organizer_id").references(() => playerAccounts.id).notNull(),
+  maxParticipants: integer("max_participants").default(20),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+// Training participants table for session management
+export const trainingParticipants = pgTable("training_participants", {
+  id: serial("id").primaryKey(),
+  trainingSessionId: integer("training_session_id").references(() => trainingSessions.id).notNull(),
+  playerAccountId: integer("player_account_id").references(() => playerAccounts.id).notNull(),
+  joinedAt: timestamp("joined_at").defaultNow(),
+  status: text("status").default("joined")
+});
+
 // Relations
 export const leaguesRelations = relations(leagues, ({ many }) => ({
   teams: many(teams),
@@ -334,5 +358,28 @@ export const insertPlayerVerificationSchema = createInsertSchema(playerVerificat
   createdAt: true,
 });
 
+export const insertTrainingSessionSchema = createInsertSchema(trainingSessions).pick({
+  teamId: true,
+  title: true,
+  description: true,
+  sessionDate: true,
+  location: true,
+  organizerId: true,
+  maxParticipants: true,
+  isActive: true,
+});
+
+export const insertTrainingParticipantSchema = createInsertSchema(trainingParticipants).pick({
+  trainingSessionId: true,
+  playerAccountId: true,
+  status: true,
+});
+
 export type InsertPlayerAccount = z.infer<typeof insertPlayerAccountSchema>;
 export type PlayerAccount = typeof playerAccounts.$inferSelect;
+
+export type InsertTrainingSession = z.infer<typeof insertTrainingSessionSchema>;
+export type TrainingSession = typeof trainingSessions.$inferSelect;
+
+export type InsertTrainingParticipant = z.infer<typeof insertTrainingParticipantSchema>;
+export type TrainingParticipant = typeof trainingParticipants.$inferSelect;

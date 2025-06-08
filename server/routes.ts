@@ -455,7 +455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         message: "Login successful",
         account: accountResponse,
-        isVerified: account.isVerified
+        isVerified: !!account.verifiedBy
       });
     } catch (error) {
       console.error("Error during login:", error);
@@ -510,6 +510,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get matches for the player's team
+      if (!player.teamId) {
+        return res.status(400).json({ message: "Player is not assigned to a team" });
+      }
       const matches = await storage.getMatchesByTeam(player.teamId);
       res.json(matches);
     } catch (error) {

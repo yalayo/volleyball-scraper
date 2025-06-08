@@ -858,27 +858,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMatchesByTeam(teamId: number): Promise<(Match & { homeTeam?: Team; awayTeam?: Team; league?: League })[]> {
-    const matchesData = await db
-      .select({
-        match: matches,
-        homeTeam: teams,
-        league: leagues
-      })
+    // Get all matches where the team is either home or away
+    const allMatches = await db
+      .select()
       .from(matches)
-      .leftJoin(teams, eq(matches.homeTeamId, teams.id))
-      .leftJoin(leagues, eq(matches.leagueId, leagues.id))
       .where(or(eq(matches.homeTeamId, teamId), eq(matches.awayTeamId, teamId)))
       .orderBy(desc(matches.matchDate));
 
     const results = [];
-    for (const matchData of matchesData) {
-      const awayTeam = await db.select().from(teams).where(eq(teams.id, matchData.match.awayTeamId)).then(rows => rows[0]);
+    for (const match of allMatches) {
+      // Get home team
+      const [homeTeam] = await db.select().from(teams).where(eq(teams.id, match.homeTeamId));
+      // Get away team  
+      const [awayTeam] = await db.select().from(teams).where(eq(teams.id, match.awayTeamId));
+      // Get league
+      const [league] = match.leagueId ? await db.select().from(leagues).where(eq(leagues.id, match.leagueId)) : [undefined];
       
       results.push({
-        ...matchData.match,
-        homeTeam: matchData.homeTeam || undefined,
+        ...match,
+        homeTeam: homeTeam || undefined,
         awayTeam: awayTeam || undefined,
-        league: matchData.league || undefined
+        league: league || undefined
       });
     }
 

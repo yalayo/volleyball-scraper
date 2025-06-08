@@ -354,6 +354,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Player Account endpoints for volleyball athlete onboarding
+  app.post('/api/player-accounts/validate-sams-id', async (req, res) => {
+    try {
+      const { samsPlayerId } = req.body;
+      
+      if (!samsPlayerId) {
+        return res.status(400).json({ message: "SAMS Player ID is required" });
+      }
+
+      const isValid = await storage.validateSamsPlayerId(samsPlayerId);
+      const existingAccount = await storage.getPlayerAccountBySamsId(samsPlayerId);
+      
+      if (existingAccount) {
+        return res.status(409).json({ 
+          message: "An account already exists for this SAMS Player ID",
+          isValid: false 
+        });
+      }
+
+      res.json({ isValid, samsPlayerId });
+    } catch (error) {
+      console.error("Error validating SAMS Player ID:", error);
+      res.status(500).json({ message: "Failed to validate SAMS Player ID" });
+    }
+  });
+
+  app.post('/api/player-accounts/register', async (req, res) => {
+    try {
+      const accountData = req.body;
+      
+      // Validate required fields
+      if (!accountData.email || !accountData.passwordHash || !accountData.firstName || 
+          !accountData.lastName || !accountData.samsPlayerId) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
+      // Check if SAMS Player ID is valid
+      const isValidSamsId = await storage.validateSamsPlayerId(accountData.samsPlayerId);
+      if (!isValidSamsId) {
+        return res.status(400).json({ 
+          message: "Invalid SAMS Player ID. This ID must match a player in our volleyball database." 
+        });
+      }
+
+      // Check if email or SAMS ID already exists
+      const existingEmail = await storage.getPlayerAccountByEmail(accountData.email);
+      const existingSamsId = await storage.getPlayerAccountBySamsId(accountData.samsPlayerId);
+      
+      if (existingEmail) {
+        return res.status(409).json({ message: "An account with this email already exists" });
+      }
+      
+      if (existingSamsId) {
+        return res.status(409).json({ message: "An account already exists for this SAMS Player ID" });
+      }
+
+      // Create the account
+      const newAccount = await storage.createPlayerAccount(accountData);
+      
+      // Remove password hash from response
+      const { passwordHash, ...accountResponse } = newAccount;
+      
+      res.status(201).json({
+        message: "Account created successfully. Please verify your identity with team management.",
+        account: accountResponse
+      });
+    } catch (error) {
+      console.error("Error creating player account:", error);
+      res.status(500).json({ message: "Failed to create account" });
+    }
+  });
+
+  app.post('/api/player-accounts/login', async (req, res) => {
+    try {
+      const { email, passwordHash } = req.body;
+      
+      if (!email || !passwordHash) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+
+      const account = await storage.getPlayerAccountByEmail(email);
+      
+      if (!account || account.passwordHash !== passwordHash) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+
+      if (!account.isActive) {
+        return res.status(403).json({ message: "Account is deactivated" });
+      }
+
+      // Update last login
+      await storage.updatePlayerAccountLastLogin(account.id);
+      
+      // Remove password hash from response
+      const { passwordHash: _, ...accountResponse } = account;
+      
+      res.json({
+        message: "Login successful",
+        account: accountResponse,
+        isVerified: account.isVerified
+      });
+    } catch (error) {
+      console.error("Error during login:", error);
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

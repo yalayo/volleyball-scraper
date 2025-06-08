@@ -1,4 +1,4 @@
-import { users, leagues, teams, players, scrapeLogs, matches, teamStats, teamHighlights, userTeamPreferences, type User, type InsertUser, type League, type InsertLeague, type Team, type InsertTeam, type Player, type InsertPlayer, type ScrapeLog, type InsertScrapeLog, type Match, type InsertMatch, type TeamStats, type InsertTeamStats, type TeamHighlight, type InsertTeamHighlight, type UserTeamPreference, type InsertUserTeamPreference } from "@shared/schema";
+import { users, leagues, teams, players, scrapeLogs, matches, teamStats, teamHighlights, userTeamPreferences, playerAccounts, type User, type InsertUser, type League, type InsertLeague, type Team, type InsertTeam, type Player, type InsertPlayer, type ScrapeLog, type InsertScrapeLog, type Match, type InsertMatch, type TeamStats, type InsertTeamStats, type TeamHighlight, type InsertTeamHighlight, type UserTeamPreference, type InsertUserTeamPreference, type PlayerAccount, type InsertPlayerAccount } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, count, sql } from "drizzle-orm";
 
@@ -75,6 +75,14 @@ export interface IStorage {
   createUserTeamPreference(preference: InsertUserTeamPreference): Promise<UserTeamPreference>;
   updateUserTeamPreference(id: number, preference: Partial<InsertUserTeamPreference>): Promise<UserTeamPreference | undefined>;
   deleteUserTeamPreference(id: number): Promise<boolean>;
+
+  // Player Account methods
+  getPlayerAccountByEmail(email: string): Promise<PlayerAccount | undefined>;
+  getPlayerAccountBySamsId(samsPlayerId: string): Promise<PlayerAccount | undefined>;
+  createPlayerAccount(account: InsertPlayerAccount): Promise<PlayerAccount>;
+  verifyPlayerAccount(id: number, playerId: number): Promise<PlayerAccount | undefined>;
+  updatePlayerAccountLastLogin(id: number): Promise<void>;
+  validateSamsPlayerId(samsPlayerId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -795,6 +803,48 @@ export class DatabaseStorage implements IStorage {
   async deleteUserTeamPreference(id: number): Promise<boolean> {
     const result = await db.delete(userTeamPreferences).where(eq(userTeamPreferences.id, id));
     return (result.rowCount || 0) > 0;
+  }
+
+  // Player Account methods for volleyball athlete onboarding
+  async getPlayerAccountByEmail(email: string): Promise<PlayerAccount | undefined> {
+    const [account] = await db.select().from(playerAccounts).where(eq(playerAccounts.email, email));
+    return account;
+  }
+
+  async getPlayerAccountBySamsId(samsPlayerId: string): Promise<PlayerAccount | undefined> {
+    const [account] = await db.select().from(playerAccounts).where(eq(playerAccounts.samsPlayerId, samsPlayerId));
+    return account;
+  }
+
+  async createPlayerAccount(account: InsertPlayerAccount): Promise<PlayerAccount> {
+    const [newAccount] = await db.insert(playerAccounts).values(account).returning();
+    return newAccount;
+  }
+
+  async verifyPlayerAccount(id: number, playerId: number): Promise<PlayerAccount | undefined> {
+    const [account] = await db
+      .update(playerAccounts)
+      .set({ 
+        playerId: playerId,
+        isVerified: true,
+        updatedAt: new Date()
+      })
+      .where(eq(playerAccounts.id, id))
+      .returning();
+    return account;
+  }
+
+  async updatePlayerAccountLastLogin(id: number): Promise<void> {
+    await db
+      .update(playerAccounts)
+      .set({ lastLoginAt: new Date() })
+      .where(eq(playerAccounts.id, id));
+  }
+
+  async validateSamsPlayerId(samsPlayerId: string): Promise<boolean> {
+    // Check if the SAMS player ID exists in our scraped volleyball player data
+    const [player] = await db.select().from(players).where(eq(players.playerId, samsPlayerId));
+    return !!player;
   }
 }
 

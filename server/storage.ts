@@ -7,6 +7,9 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  authenticateUser(username: string, password: string): Promise<User | null>;
+  updateUserLastLogin(id: number): Promise<void>;
+  createAdminUser(username: string, password: string, email?: string): Promise<User>;
 
   // League methods
   getLeagues(): Promise<League[]>;
@@ -123,6 +126,45 @@ export class DatabaseStorage implements IStorage {
       .values(insertUser)
       .returning();
     return user;
+  }
+
+  async authenticateUser(username: string, password: string): Promise<User | null> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, username));
+    
+    if (!user || !user.isActive) {
+      return null;
+    }
+    
+    // Simple password comparison (in production, use bcrypt)
+    if (user.password === password) {
+      return user;
+    }
+    
+    return null;
+  }
+
+  async updateUserLastLogin(id: number): Promise<void> {
+    await db
+      .update(users)
+      .set({ lastLoginAt: new Date() })
+      .where(eq(users.id, id));
+  }
+
+  async createAdminUser(username: string, password: string, email?: string): Promise<User> {
+    const [adminUser] = await db
+      .insert(users)
+      .values({
+        username,
+        password,
+        email,
+        role: "admin",
+        isActive: true
+      })
+      .returning();
+    return adminUser;
   }
 
   async getLeagues(): Promise<League[]> {

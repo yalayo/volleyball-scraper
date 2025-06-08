@@ -4,8 +4,115 @@ import { storage } from "./storage";
 import { scrapeVolleyballData } from "./scraper";
 import { insertLeagueSchema, insertTeamSchema, insertPlayerSchema } from "@shared/schema";
 import { z } from "zod";
+import session from "express-session";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Session middleware for admin authentication
+  app.use(session({
+    secret: process.env.SESSION_SECRET || 'volleyball-admin-secret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { 
+      secure: false, // Set to true in production with HTTPS
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+  }));
+
+  // Admin authentication middleware
+  const requireAdmin = (req: any, res: any, next: any) => {
+    if (!req.session?.user || req.session.user.role !== 'admin') {
+      return res.status(401).json({ message: 'Admin access required' });
+    }
+    next();
+  };
+
+  // Admin login endpoint
+  app.post("/api/admin/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ message: "Username and password required" });
+      }
+
+      const user = await storage.authenticateUser(username, password);
+      
+      if (!user || user.role !== 'admin') {
+        return res.status(401).json({ message: "Invalid admin credentials" });
+      }
+
+      await storage.updateUserLastLogin(user.id);
+      req.session.user = user;
+      
+      res.json({
+        message: "Login successful",
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          role: user.role
+        }
+      });
+    } catch (error: any) {
+      console.error("Admin login error:", error);
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  // Admin logout endpoint
+  app.post("/api/admin/logout", (req: any, res) => {
+    req.session.destroy((err: any) => {
+      if (err) {
+        return res.status(500).json({ message: "Logout failed" });
+      }
+      res.json({ message: "Logout successful" });
+    });
+  });
+
+  // Admin session check endpoint
+  app.get("/api/admin/session", (req: any, res) => {
+    if (req.session?.user && req.session.user.role === 'admin') {
+      res.json({
+        isAuthenticated: true,
+        user: {
+          id: req.session.user.id,
+          username: req.session.user.username,
+          email: req.session.user.email,
+          role: req.session.user.role
+        }
+      });
+    } else {
+      res.json({ isAuthenticated: false });
+    }
+  });
+
+  // Create admin user endpoint (one-time setup)
+  app.post("/api/admin/setup", async (req, res) => {
+    try {
+      const { username, password, email } = req.body;
+      
+      // Check if admin already exists
+      const existingAdmin = await storage.getUserByUsername(username);
+      if (existingAdmin) {
+        return res.status(400).json({ message: "Admin user already exists" });
+      }
+
+      const adminUser = await storage.createAdminUser(username, password, email);
+      res.json({
+        message: "Admin user created successfully",
+        user: {
+          id: adminUser.id,
+          username: adminUser.username,
+          email: adminUser.email,
+          role: adminUser.role
+        }
+      });
+    } catch (error: any) {
+      console.error("Admin setup error:", error);
+      res.status(500).json({ message: "Failed to create admin user" });
+    }
+  });
   // Stats endpoint
   app.get("/api/stats", async (req, res) => {
     try {

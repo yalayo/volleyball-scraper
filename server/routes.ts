@@ -363,7 +363,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "SAMS Player ID is required" });
       }
 
-      // First check if the player exists in our volleyball database
+      // Check if the player exists in our volleyball database
       const isValid = await storage.validateSamsPlayerId(samsPlayerId);
       
       if (!isValid) {
@@ -373,17 +373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check if an account already exists
-      const existingAccount = await storage.getPlayerAccountBySamsId(samsPlayerId);
-      
-      if (existingAccount) {
-        return res.status(409).json({ 
-          message: "An account already exists for this SAMS Player ID. Please use the login page instead.",
-          isValid: false,
-          hasAccount: true
-        });
-      }
-
+      // Player exists in database - proceed to account creation step
       res.json({ isValid: true, samsPlayerId });
     } catch (error) {
       console.error("Error validating SAMS Player ID:", error);

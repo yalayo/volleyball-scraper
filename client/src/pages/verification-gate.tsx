@@ -135,7 +135,13 @@ export default function VerificationGate({ playerAccount, onVerified }: Verifica
     return null;
   }
 
-  const progressData = progress && typeof progress === 'object' ? progress as any : null;
+  const progressData = progress && typeof progress === 'object' && 'isFullyVerified' in progress ? progress as {
+    teammateVerifications: number;
+    trainerVerification: boolean;
+    adminVerification: boolean;
+    totalNeeded: number;
+    isFullyVerified: boolean;
+  } : null;
   const verificationPercentage = progressData ? Math.round((progressData.teammateVerifications / progressData.totalNeeded) * 100) : 0;
 
   return (
@@ -154,14 +160,14 @@ export default function VerificationGate({ playerAccount, onVerified }: Verifica
               Verification Progress
             </CardTitle>
             <CardDescription>
-              You need {progress?.totalNeeded || 3} teammate verifications to access your dashboard
+              You need {progressData?.totalNeeded || 3} teammate verifications to access your dashboard
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div>
               <div className="flex justify-between text-sm mb-2">
                 <span>Teammate Verifications</span>
-                <span>{progress?.teammateVerifications || 0} / {progress?.totalNeeded || 3}</span>
+                <span>{progressData?.teammateVerifications || 0} / {progressData?.totalNeeded || 3}</span>
               </div>
               <Progress value={verificationPercentage} className="h-2" />
             </div>
@@ -171,9 +177,9 @@ export default function VerificationGate({ playerAccount, onVerified }: Verifica
                 <Users className="h-5 w-5 text-blue-600" />
                 <div>
                   <p className="font-medium text-sm">Teammate Verifications</p>
-                  <p className="text-xs text-gray-600">{progress?.teammateVerifications || 0} received</p>
+                  <p className="text-xs text-gray-600">{progressData?.teammateVerifications || 0} received</p>
                 </div>
-                {(progress?.teammateVerifications || 0) >= (progress?.totalNeeded || 3) && (
+                {(progressData?.teammateVerifications || 0) >= (progressData?.totalNeeded || 3) && (
                   <CheckCircle className="h-5 w-5 text-green-600" />
                 )}
               </div>
@@ -183,10 +189,10 @@ export default function VerificationGate({ playerAccount, onVerified }: Verifica
                 <div>
                   <p className="font-medium text-sm">Trainer Verification</p>
                   <p className="text-xs text-gray-600">
-                    {progress?.trainerVerification ? "Verified" : "Pending"}
+                    {progressData?.trainerVerification ? "Verified" : "Pending"}
                   </p>
                 </div>
-                {progress?.trainerVerification && (
+                {progressData?.trainerVerification && (
                   <CheckCircle className="h-5 w-5 text-green-600" />
                 )}
               </div>
@@ -196,10 +202,10 @@ export default function VerificationGate({ playerAccount, onVerified }: Verifica
                 <div>
                   <p className="font-medium text-sm">Admin Verification</p>
                   <p className="text-xs text-gray-600">
-                    {progress?.adminVerification ? "Verified" : "Pending"}
+                    {progressData?.adminVerification ? "Verified" : "Pending"}
                   </p>
                 </div>
-                {progress?.adminVerification && (
+                {progressData?.adminVerification && (
                   <CheckCircle className="h-5 w-5 text-green-600" />
                 )}
               </div>

@@ -15,6 +15,7 @@ import PlayerLogin from "@/pages/player-login";
 import PlayerDashboard from "@/pages/player-dashboard";
 import AdminLogin from "@/pages/admin-login";
 import AdminDashboard from "@/pages/admin-dashboard";
+import MatchDetails from "@/pages/match-details";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -35,6 +36,7 @@ function Router() {
       {/* Legacy routes (admin-protected) */}
       <Route path="/dashboard" component={Dashboard}/>
       <Route path="/games" component={GamesPage}/>
+      <Route path="/match/:id" component={MatchDetails}/>
       <Route path="/players" component={PlayersPage}/>
       <Route path="/teams" component={TeamsPage}/>
       <Route path="/leagues" component={LeaguesPage}/>

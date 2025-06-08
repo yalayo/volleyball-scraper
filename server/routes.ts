@@ -301,6 +301,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get detailed match with sets and lineups for comprehensive analytics
+  app.get("/api/matches/:id/details", async (req, res) => {
+    try {
+      const matchId = parseInt(req.params.id);
+      if (isNaN(matchId)) {
+        return res.status(400).json({ message: "Invalid match ID" });
+      }
+
+      // Get match details
+      const match = await storage.getMatch(matchId);
+      if (!match) {
+        return res.status(404).json({ message: "Match not found" });
+      }
+
+      // Get match sets (containing point sequences and detailed set analytics)
+      const sets = await storage.getMatchSets(matchId);
+      
+      // Get match lineups (player positions for each set)
+      const lineups = await storage.getMatchLineups(matchId);
+
+      // Combine all data for comprehensive match analytics
+      const detailedMatch = {
+        ...match,
+        sets,
+        lineups
+      };
+
+      res.json(detailedMatch);
+    } catch (error) {
+      console.error("Error fetching match details:", error);
+      res.status(500).json({ message: "Failed to fetch match details" });
+    }
+  });
+
   app.post("/api/players", async (req, res) => {
     try {
       const validatedData = insertPlayerSchema.parse(req.body);

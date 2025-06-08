@@ -253,14 +253,22 @@ export default function Games() {
                         <div className="text-xs text-gray-500">
                           Match ID: {match.matchId}
                         </div>
-                        {match.samsUrl && (
+                        <div className="flex items-center space-x-2">
                           <Button variant="outline" size="sm" asChild>
-                            <a href={match.samsUrl} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="h-4 w-4 mr-2" />
-                              View Details
-                            </a>
+                            <Link href={`/match/${match.id}`}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              Match Analytics
+                            </Link>
                           </Button>
-                        )}
+                          {match.samsUrl && (
+                            <Button variant="outline" size="sm" asChild>
+                              <a href={match.samsUrl} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                SAMS
+                              </a>
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </CardContent>

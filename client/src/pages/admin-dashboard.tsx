@@ -37,6 +37,8 @@ interface AdminSession {
 
 export default function AdminDashboard() {
   const [newUrl, setNewUrl] = useState("");
+  const [leagueName, setLeagueName] = useState("");
+  const [category, setCategory] = useState("");
   const [isScrapingAll, setIsScrapingAll] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -76,11 +78,14 @@ export default function AdminDashboard() {
 
   // Single URL scrape mutation
   const scrapeMutation = useMutation({
-    mutationFn: (url: string) => apiRequest("POST", "/api/scrape", { url }),
+    mutationFn: (data: { url: string; leagueName?: string; category?: string }) => 
+      apiRequest("POST", "/api/scrape", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/leagues"] });
       setNewUrl("");
+      setLeagueName("");
+      setCategory("");
     }
   });
 
@@ -291,8 +296,35 @@ export default function AdminDashboard() {
                       disabled={scrapeMutation.isPending}
                     />
                   </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="leagueName">League Name</Label>
+                    <Input
+                      id="leagueName"
+                      placeholder="e.g., Verbandsliga Herren 2024/25"
+                      value={leagueName}
+                      onChange={(e) => setLeagueName(e.target.value)}
+                      disabled={scrapeMutation.isPending}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Category</Label>
+                    <Input
+                      id="category"
+                      placeholder="e.g., Verbandsliga, Landesliga, etc."
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      disabled={scrapeMutation.isPending}
+                    />
+                  </div>
+                  
                   <Button 
-                    onClick={() => scrapeMutation.mutate(newUrl)}
+                    onClick={() => scrapeMutation.mutate({ 
+                      url: newUrl, 
+                      leagueName: leagueName || undefined, 
+                      category: category || undefined 
+                    })}
                     disabled={scrapeMutation.isPending || !newUrl.trim()}
                     className="w-full"
                   >

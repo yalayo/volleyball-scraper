@@ -559,9 +559,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.createMatchSet(setData);
         }
         
-        // Store match lineups data
+        // Store match lineups data with correct team IDs
         for (const lineupData of pdfData.lineups) {
           lineupData.matchId = matchId;
+          // Use actual team IDs from the match
+          lineupData.teamId = lineupData.teamId === 0 ? match.homeTeamId : match.awayTeamId;
           await storage.createMatchLineup(lineupData);
         }
         

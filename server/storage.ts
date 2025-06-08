@@ -271,18 +271,8 @@ export class DatabaseStorage implements IStorage {
         isActive: teams.isActive,
         createdAt: teams.createdAt,
         updatedAt: teams.updatedAt,
-        league: {
-          id: leagues.id,
-          name: leagues.name,
-          category: leagues.category,
-          url: leagues.url,
-          seriesId: leagues.seriesId,
-          samsId: leagues.samsId,
-          teamsCount: leagues.teamsCount,
-          isActive: leagues.isActive,
-          createdAt: leagues.createdAt,
-          updatedAt: leagues.updatedAt,
-        },
+        leagueName: leagues.name,
+        leagueCategory: leagues.category,
       })
       .from(teams)
       .leftJoin(leagues, eq(teams.leagueId, leagues.id))
@@ -302,7 +292,18 @@ export class DatabaseStorage implements IStorage {
       isActive: row.isActive,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
-      league: row.league && row.league.id ? row.league : undefined,
+      league: row.leagueName ? {
+        id: row.leagueId!,
+        name: row.leagueName,
+        category: row.leagueCategory,
+        url: null,
+        seriesId: null,
+        samsId: null,
+        teamsCount: null,
+        isActive: null,
+        createdAt: null,
+        updatedAt: null,
+      } : undefined,
     }));
   }
 

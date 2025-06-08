@@ -52,9 +52,10 @@ export default function GamesPage() {
     }
     return true;
   }).sort((a, b) => {
-    // Sort by match date (most recent first)
-    const dateA = new Date(a.matchDate || a.createdAt || 0);
-    const dateB = new Date(b.matchDate || b.createdAt || 0);
+    // Sort by actual match date if available, otherwise by scrape date (most recent first)
+    const getDisplayDate = (match: Match) => match.matchDate || match.createdAt || 0;
+    const dateA = new Date(getDisplayDate(a));
+    const dateB = new Date(getDisplayDate(b));
     return dateB.getTime() - dateA.getTime();
   });
 
@@ -80,18 +81,20 @@ export default function GamesPage() {
   const averageSetsPerMatch = filteredMatches.length > 0 ? 
     filteredMatches.reduce((sum, m) => sum + ((m.homeSets || 0) + (m.awaySets || 0)), 0) / filteredMatches.length : 0;
   
-  // Date-based statistics
-  const matchesWithDates = filteredMatches.filter(m => m.matchDate || m.createdAt);
+  // Date-based statistics  
+  const getDisplayDate = (match: Match) => match.matchDate || match.createdAt;
+  const matchesWithDates = filteredMatches.filter(m => getDisplayDate(m));
   const recentMatches = matchesWithDates.filter(m => {
-    const date = new Date(m.matchDate || m.createdAt!);
+    const date = new Date(getDisplayDate(m)!);
     return Date.now() - date.getTime() < 7 * 24 * 60 * 60 * 1000; // Within 7 days
   }).length;
   
   const dateRange = matchesWithDates.length > 0 ? (() => {
-    const dates = matchesWithDates.map(m => new Date(m.matchDate || m.createdAt!));
+    const dates = matchesWithDates.map(m => new Date(getDisplayDate(m)!));
     const earliest = new Date(Math.min(...dates.map(d => d.getTime())));
     const latest = new Date(Math.max(...dates.map(d => d.getTime())));
-    return { earliest, latest };
+    const hasActualDates = filteredMatches.some(m => m.matchDate);
+    return { earliest, latest, hasActualDates };
   })() : null;
 
   const matchColumns = [
@@ -193,10 +196,13 @@ export default function GamesPage() {
       key: "date",
       header: "Date",
       render: (match: Match) => {
-        const matchDate = match.matchDate || match.createdAt;
-        if (!matchDate) return <span className="text-gray-400">-</span>;
+        // Prioritize actual match date, fall back to scrape date if needed
+        const hasActualDate = match.matchDate && match.matchDate !== null;
+        const displayDate = hasActualDate ? match.matchDate : match.createdAt;
         
-        const date = new Date(matchDate);
+        if (!displayDate) return <span className="text-gray-400">-</span>;
+        
+        const date = new Date(displayDate);
         const isToday = new Date().toDateString() === date.toDateString();
         const isRecent = Date.now() - date.getTime() < 7 * 24 * 60 * 60 * 1000; // Within 7 days
         
@@ -210,7 +216,7 @@ export default function GamesPage() {
               })}
             </div>
             <div className="text-xs text-gray-500">
-              {formatDistanceToNow(date, { addSuffix: true })}
+              {hasActualDate ? formatDistanceToNow(date, { addSuffix: true }) : `Scraped ${formatDistanceToNow(date, { addSuffix: true })}`}
             </div>
           </div>
         );

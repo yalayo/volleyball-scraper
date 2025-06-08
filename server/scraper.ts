@@ -475,17 +475,32 @@ async function scrapeMatchResults(
         let awayTeamName = '';
         let dateText = '';
         
+        // Enhanced date extraction - look for dates in multiple formats and locations
+        $row.find('td, th').each((_, cell) => {
+          const $cell = $(cell);
+          const cellText = $cell.text().trim();
+          
+          // Look for German date format DD.MM.YYYY or DD.MM.YY
+          const dateMatch = cellText.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
+          if (dateMatch && !dateText) {
+            dateText = cellText;
+            return;
+          }
+          
+          // Look for other date formats
+          const altDateMatch = cellText.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+          if (altDateMatch && !dateText) {
+            // Convert to German format for consistent parsing
+            dateText = `${altDateMatch[1]}.${altDateMatch[2]}.${altDateMatch[3]}`;
+            return;
+          }
+        });
+        
         // Look for teams based on volleyball table structure
         // Usually the team name is in a cell adjacent to the result cell
         const allCells = cells.toArray();
         for (let i = 0; i < allCells.length; i++) {
           const cellText = $(allCells[i]).text().trim();
-          
-          // Extract date if found
-          if (cellText.match(/\d{1,2}\.\d{1,2}\.\d{4}/)) {
-            dateText = cellText;
-            continue;
-          }
           
           // Skip cells with scores, empty content, or time
           if (!cellText || cellText.includes(':') || cellText.match(/^\d{1,2}:\d{2}/) || cellText.length < 3) {
@@ -645,16 +660,42 @@ function parseMatchResult(
       }
     }
 
-    // Parse date
+    // Parse date with enhanced format support
     let matchDate: Date | null = null;
     if (dateText) {
-      // Handle various date formats
-      const dateMatch = dateText.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+      // Handle German date format DD.MM.YYYY or DD.MM.YY
+      let dateMatch = dateText.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
       if (dateMatch) {
         const day = parseInt(dateMatch[1]);
         const month = parseInt(dateMatch[2]) - 1; // Month is 0-indexed
-        const year = parseInt(dateMatch[3]);
+        let year = parseInt(dateMatch[3]);
+        
+        // Handle 2-digit years
+        if (year < 50) {
+          year += 2000;
+        } else if (year < 100) {
+          year += 1900;
+        }
+        
         matchDate = new Date(year, month, day);
+        console.log(`Parsed match date: ${dateText} -> ${matchDate.toISOString()}`);
+      } else {
+        // Try other date formats
+        dateMatch = dateText.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+        if (dateMatch) {
+          const day = parseInt(dateMatch[1]);
+          const month = parseInt(dateMatch[2]) - 1;
+          let year = parseInt(dateMatch[3]);
+          
+          if (year < 50) {
+            year += 2000;
+          } else if (year < 100) {
+            year += 1900;
+          }
+          
+          matchDate = new Date(year, month, day);
+          console.log(`Parsed alternative date format: ${dateText} -> ${matchDate.toISOString()}`);
+        }
       }
     }
 

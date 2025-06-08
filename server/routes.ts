@@ -461,14 +461,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin-protected scraping endpoints
   app.post("/api/scrape", requireAdmin, async (req, res) => {
     try {
-      const { url } = req.body;
+      const { url, leagueName, category } = req.body;
 
-      if (!url) {
-        return res.status(400).json({ message: "URL is required" });
+      if (!url || typeof url !== 'string') {
+        return res.status(400).json({ message: "Valid URL string is required" });
       }
 
-      // Start scraping in background
-      await scrapeVolleyballData([url], storage);
+      // Start scraping in background with optional league metadata
+      const finalLeagueName = leagueName || `League from ${new URL(url).hostname}`;
+      const finalCategory = category || 'General';
+      await scrapeVolleyballData(url, finalLeagueName, finalCategory, storage);
 
       res.json({ message: "Scraping completed successfully" });
     } catch (error: any) {
@@ -480,11 +482,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/scrape-all", requireAdmin, async (req, res) => {
     try {
       const predefinedUrls = [
-        "https://www.volleyball.nrw/volleyball/spielbetrieb/meisterschaft/?spielbetrieb_option_saison=2023/24&tx_nwvvportal%5Baction%5D=show&tx_nwvvportal%5Bcontroller%5D=Competition&tx_nwvvportal%5Bcompetition%5D=57098421",
-        "https://www.volleyball.nrw/volleyball/spielbetrieb/meisterschaft/?spielbetrieb_option_saison=2023/24&tx_nwvvportal%5Baction%5D=show&tx_nwvvportal%5Bcontroller%5D=Competition&tx_nwvvportal%5Bcompetition%5D=57098408"
+        { url: "https://www.volleyball.nrw/volleyball/spielbetrieb/meisterschaft/?spielbetrieb_option_saison=2023/24&tx_nwvvportal%5Baction%5D=show&tx_nwvvportal%5Bcontroller%5D=Competition&tx_nwvvportal%5Bcompetition%5D=57098421", name: "Verbandsliga Herren", category: "Verbandsliga" },
+        { url: "https://www.volleyball.nrw/volleyball/spielbetrieb/meisterschaft/?spielbetrieb_option_saison=2023/24&tx_nwvvportal%5Baction%5D=show&tx_nwvvportal%5Bcontroller%5D=Competition&tx_nwvvportal%5Bcompetition%5D=57098408", name: "Landesliga Herren", category: "Landesliga" }
       ];
       
-      await scrapeVolleyballData(predefinedUrls, storage);
+      for (const league of predefinedUrls) {
+        try {
+          await scrapeVolleyballData(league.url, league.name, league.category, storage);
+          // Add delay between requests
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        } catch (error) {
+          console.error(`Failed to scrape ${league.name}:`, error);
+          // Continue with next league
+        }
+      }
+      
       res.json({ message: "All scraping completed successfully" });
     } catch (error: any) {
       console.error("Bulk scraping error:", error);
@@ -506,7 +518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Start scraping in background
-      await scrapeVolleyballData([league.url], storage);
+      await scrapeVolleyballData(league.url, league.name, league.category || 'General', storage);
 
       res.json({ message: "League scraping completed successfully" });
     } catch (error: any) {

@@ -106,20 +106,49 @@ export async function scrapeTeamContact(
   };
 
   try {
-    // Construct team contact URL using the pattern provided by user
-    const contactUrl = baseUrl.replace(
-      /(&LeaguePresenter\.view=teamOverview.*)?$/,
-      `&LeaguePresenter.teamListView.view=contact&LeaguePresenter.view=teamOverview&LeaguePresenter.teamListView.teamId=${teamId}`
-    );
+    // Try multiple URL patterns for contact extraction
+    const urlPatterns = [
+      // Pattern 1: Add contact view parameters to existing URL
+      baseUrl.replace(
+        /(&LeaguePresenter\.view=teamOverview.*)?$/,
+        `&LeaguePresenter.teamListView.view=contact&LeaguePresenter.view=teamOverview&LeaguePresenter.teamListView.teamId=${teamId}`
+      ),
+      // Pattern 2: Direct contact URL with team ID
+      baseUrl.replace(/LeaguePresenter\.view=teamOverview/, `LeaguePresenter.view=contact&LeaguePresenter.teamId=${teamId}`),
+      // Pattern 3: Team contact page with specific structure
+      baseUrl.replace(/\?.*$/, `?LeaguePresenter.teamId=${teamId}&LeaguePresenter.view=contact`)
+    ];
 
+    let contactUrl = urlPatterns[0];
     console.log(`Scraping contact info for team ${teamId} from: ${contactUrl}`);
 
-    const response = await axios.get(contactUrl, {
-      timeout: 15000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    let response;
+    let attempts = 0;
+    
+    // Try multiple URL patterns until one works
+    for (const url of urlPatterns) {
+      attempts++;
+      try {
+        console.log(`Attempt ${attempts}: Trying URL pattern: ${url}`);
+        response = await axios.get(url, {
+          timeout: 15000,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+          }
+        });
+        contactUrl = url;
+        break;
+      } catch (error) {
+        console.log(`URL pattern ${attempts} failed:`, error.message);
+        if (attempts === urlPatterns.length) {
+          throw error;
+        }
       }
-    });
+    }
+    
+    if (!response) {
+      throw new Error('All URL patterns failed');
+    }
 
     const $ = cheerio.load(response.data);
 

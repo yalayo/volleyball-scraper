@@ -7,7 +7,7 @@ async function testContactExtraction() {
     
     // Test with a known team ID from the database
     const teamId = '70108584'; // Kevelaerer SV II
-    const baseUrl = 'https://www.volleyball-verband.de/cms/index.php?Spielbetrieb.do&LeaguePresenter.matchSeriesId=70061247&LeaguePresenter.view=teamOverview';
+    const baseUrl = 'https://ergebnisdienst.volleyball.nrw/cms/home/erwachsene/landesligen/landesligen_maenner/landesliga_3_maenner.xhtml?LeaguePresenter.view=teamOverview&LeaguePresenter.matchSeriesId=70108659';
     console.log(`Testing contact extraction for team ID: ${teamId}`);
     
     const contactInfo = await scrapeTeamContact(baseUrl, teamId);
@@ -27,7 +27,7 @@ async function testContactExtraction() {
     const teamId2 = '70108582'; // Another team from the database
     console.log(`\nTesting contact extraction for team ID: ${teamId2}`);
     
-    const contactInfo2 = await scrapeTeamContact(teamId2);
+    const contactInfo2 = await scrapeTeamContact(baseUrl, teamId2);
     
     console.log('\n=== Contact Extraction Results 2 ===');
     console.log(`Team ID: ${teamId2}`);

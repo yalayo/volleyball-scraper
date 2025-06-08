@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,8 +41,7 @@ export default function AdminDashboard() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
-  const [showDataDialog, setShowDataDialog] = useState(false);
-  const [dataType, setDataType] = useState<'leagues' | 'teams' | 'players' | 'matches'>('leagues');
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
   // Check admin session
@@ -62,21 +62,7 @@ export default function AdminDashboard() {
     enabled: session?.isAuthenticated
   });
 
-  // Get detailed data for dialogs
-  const { data: teams } = useQuery({
-    queryKey: ["/api/teams"],
-    enabled: !!session?.isAuthenticated && dataType === 'teams' && showDataDialog
-  });
-
-  const { data: players } = useQuery({
-    queryKey: ["/api/players"],
-    enabled: !!session?.isAuthenticated && dataType === 'players' && showDataDialog
-  });
-
-  const { data: matches } = useQuery({
-    queryKey: ["/api/matches"],
-    enabled: !!session?.isAuthenticated && dataType === 'matches' && showDataDialog
-  });
+  // No longer needed - navigation replaces dialogs
 
   // Logout mutation
   const logoutMutation = useMutation({
@@ -148,8 +134,18 @@ export default function AdminDashboard() {
   };
 
   const handleStatClick = (type: 'leagues' | 'teams' | 'players' | 'matches') => {
-    setDataType(type);
-    setShowDataDialog(true);
+    switch (type) {
+      case 'matches':
+        setLocation('/games');
+        break;
+      case 'players':
+        setLocation('/players');
+        break;
+      case 'teams':
+      case 'leagues':
+        // These stay on the dashboard for now, could add dedicated pages later
+        break;
+    }
   };
 
   const handlePasswordChange = () => {

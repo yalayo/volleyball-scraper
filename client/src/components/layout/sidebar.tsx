@@ -83,6 +83,16 @@ export default function Sidebar({ onStartScraping, activeTab, onTabChange }: Sid
               <Bot className="w-4 h-4 mr-3" />
               Games
             </Button>
+            <a href="/games" className="w-full">
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-gray-700 hover:bg-gray-100"
+                size="sm"
+              >
+                <Gamepad2 className="w-4 h-4 mr-3" />
+                Games Database
+              </Button>
+            </a>
             <Button
               variant={activeTab === "logs" ? "default" : "ghost"}
               className={`w-full justify-start ${activeTab === "logs" ? "" : "text-gray-700 hover:bg-gray-100"}`}

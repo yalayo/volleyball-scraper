@@ -14,8 +14,8 @@ interface LoginData {
 }
 
 interface LoginResponse {
-  success: boolean;
-  player: {
+  message: string;
+  account: {
     id: number;
     email: string;
     firstName: string;
@@ -23,7 +23,7 @@ interface LoginResponse {
     samsPlayerId: string;
     verificationStatus: string;
   };
-  token?: string;
+  isVerified: boolean;
 }
 
 export default function PlayerLogin() {
@@ -54,9 +54,9 @@ export default function PlayerLogin() {
       return response.json();
     },
     onSuccess: (data: LoginResponse) => {
-      if (data.success) {
+      if (data.message === "Login successful") {
         // Store player data in localStorage for session management
-        localStorage.setItem('playerSession', JSON.stringify(data.player));
+        localStorage.setItem('playerSession', JSON.stringify(data.account));
         setLocation('/player-dashboard');
       }
     },

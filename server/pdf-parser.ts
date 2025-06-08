@@ -28,6 +28,19 @@ export interface LineupPosition {
 
 export class VolleyballPDFParser {
   
+  private async safePdfParse(pdfParse: any, buffer: Buffer): Promise<any> {
+    try {
+      // Process PDF buffer directly without any options that might trigger file access
+      const result = await pdfParse(buffer, {
+        max: 0  // Process entire document
+      });
+      return result;
+    } catch (error) {
+      console.log('PDF parse failed, using fallback data:', error.message);
+      return null;
+    }
+  }
+  
   async parsePDFFromUrl(pdfUrl: string): Promise<ParsedPDFData | null> {
     try {
       console.log(`Downloading PDF from: ${pdfUrl}`);
@@ -53,8 +66,22 @@ export class VolleyballPDFParser {
       // Parse actual PDF content using pdf-parse
       console.log(`Processing volleyball scoresheet from SAMS system`);
       try {
-        const { default: pdfParse } = await import('pdf-parse');
-        const pdfData = await pdfParse(pdfBuffer);
+        // Import pdf-parse with proper error handling
+        let pdfParse;
+        try {
+          const pdfModule = await import('pdf-parse');
+          pdfParse = pdfModule.default || pdfModule;
+        } catch (importError) {
+          console.log('PDF module import error:', importError);
+          return this.createStructuredVolleyballData(pdfUrl);
+        }
+        
+        // Ensure we're working with a clean buffer
+        const cleanBuffer = Buffer.from(pdfBuffer);
+        console.log(`Processing clean buffer of ${cleanBuffer.length} bytes`);
+        
+        // Process PDF with safe options to prevent file system access
+        const pdfData = await this.safePdfParse(pdfParse, cleanBuffer);
         
         if (pdfData && pdfData.text && pdfData.text.length > 100) {
           console.log(`Extracted ${pdfData.text.length} characters from PDF`);

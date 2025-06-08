@@ -631,6 +631,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate match video endpoint
+  app.post("/api/matches/:id/generate-video", async (req: Request, res: Response) => {
+    try {
+      const matchId = parseInt(req.params.id);
+      if (isNaN(matchId)) {
+        return res.status(400).json({ message: "Invalid match ID" });
+      }
+
+      // Get match details with sets and lineups
+      const matches = await storage.getMatches();
+      const match = matches.find(m => m.id === matchId);
+      if (!match) {
+        return res.status(404).json({ message: "Match not found" });
+      }
+
+      const sets = await storage.getMatchSets(matchId);
+      const lineups = await storage.getMatchLineups(matchId);
+
+      if (sets.length === 0) {
+        return res.status(400).json({ message: "No detailed match data available for video generation" });
+      }
+
+      // Import video generator
+      const { videoGenerator } = await import('./video-generator');
+      
+      const videoData = {
+        match: {
+          id: match.id,
+          homeTeamName: match.homeTeam?.name || "Unknown Team",
+          awayTeamName: match.awayTeam?.name || "Unknown Team",
+          homeScore: match.homeScore || 0,
+          awayScore: match.awayScore || 0,
+          homeSets: match.homeSets || 0,
+          awaySets: match.awaySets || 0,
+          setResults: match.setResults,
+          matchDate: match.matchDate ? match.matchDate.toISOString() : null,
+          location: match.location
+        },
+        sets,
+        lineups
+      };
+
+      console.log(`Generating video for match ${matchId}: ${videoData.match.homeTeamName} vs ${videoData.match.awayTeamName}`);
+      
+      const videoPath = await videoGenerator.generateMatchVideo(videoData);
+      
+      // Send video file
+      res.setHeader('Content-Type', 'video/mp4');
+      res.setHeader('Content-Disposition', `attachment; filename="match_${matchId}_summary.mp4"`);
+      
+      const fs = await import('fs');
+      const stream = fs.createReadStream(videoPath);
+      
+      stream.on('end', () => {
+        // Clean up video file after sending
+        setTimeout(() => {
+          if (fs.existsSync(videoPath)) {
+            fs.unlinkSync(videoPath);
+          }
+        }, 5000);
+      });
+      
+      stream.pipe(res);
+      
+    } catch (error: any) {
+      console.error("Error generating video:", error);
+      res.status(500).json({ 
+        message: "Failed to generate video",
+        error: error.message 
+      });
+    }
+  });
+
   // Team Highlights endpoints
   app.get("/api/team-highlights", async (req, res) => {
     try {

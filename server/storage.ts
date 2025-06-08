@@ -826,7 +826,8 @@ export class DatabaseStorage implements IStorage {
       .update(playerAccounts)
       .set({ 
         playerId: playerId,
-        isVerified: true,
+        verificationStatus: "verified",
+        verifiedBy: "admin",
         updatedAt: new Date()
       })
       .where(eq(playerAccounts.id, id))

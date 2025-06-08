@@ -363,17 +363,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "SAMS Player ID is required" });
       }
 
+      // First check if the player exists in our volleyball database
       const isValid = await storage.validateSamsPlayerId(samsPlayerId);
-      const existingAccount = await storage.getPlayerAccountBySamsId(samsPlayerId);
       
-      if (existingAccount) {
-        return res.status(409).json({ 
-          message: "An account already exists for this SAMS Player ID",
+      if (!isValid) {
+        return res.status(404).json({ 
+          message: "This SAMS Player ID was not found in our volleyball database. Please verify your ID or contact your team management.",
           isValid: false 
         });
       }
 
-      res.json({ isValid, samsPlayerId });
+      // Check if an account already exists
+      const existingAccount = await storage.getPlayerAccountBySamsId(samsPlayerId);
+      
+      if (existingAccount) {
+        return res.status(409).json({ 
+          message: "An account already exists for this SAMS Player ID. Please use the login page instead.",
+          isValid: false,
+          hasAccount: true
+        });
+      }
+
+      res.json({ isValid: true, samsPlayerId });
     } catch (error) {
       console.error("Error validating SAMS Player ID:", error);
       res.status(500).json({ message: "Failed to validate SAMS Player ID" });
@@ -417,8 +428,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { passwordHash, ...accountResponse } = newAccount;
       
       res.status(201).json({
-        message: "Account created successfully. Please verify your identity with team management.",
-        account: accountResponse
+        message: "Account created successfully. Your account is pending verification by 3 teammates or team management.",
+        account: accountResponse,
+        verificationStatus: "pending"
       });
     } catch (error) {
       console.error("Error creating player account:", error);

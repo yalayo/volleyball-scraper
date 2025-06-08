@@ -132,11 +132,23 @@ export const playerAccounts = pgTable("player_accounts", {
   lastName: text("last_name").notNull(),
   samsPlayerId: text("sams_player_id").unique().notNull(), // Must match a player's playerId
   playerId: integer("player_id").references(() => players.id), // Link to verified player
-  isVerified: boolean("is_verified").default(false),
+  verificationStatus: text("verification_status").default("pending"), // pending, verified, rejected
+  verifiedBy: text("verified_by"), // admin, teammates, manual
+  verificationCount: integer("verification_count").default(0), // Number of teammate verifications
   isActive: boolean("is_active").default(true),
   lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Player verifications table for teammate validation
+export const playerVerifications = pgTable("player_verifications", {
+  id: serial("id").primaryKey(),
+  playerAccountId: integer("player_account_id").references(() => playerAccounts.id).notNull(),
+  verifiedByPlayerId: integer("verified_by_player_id").references(() => players.id).notNull(),
+  verificationNote: text("verification_note"),
+  isApproved: boolean("is_approved").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Relations
@@ -309,10 +321,17 @@ export type UserTeamPreference = typeof userTeamPreferences.$inferSelect;
 export const insertPlayerAccountSchema = createInsertSchema(playerAccounts).omit({
   id: true,
   playerId: true,
-  isVerified: true,
+  verificationStatus: true,
+  verifiedBy: true,
+  verificationCount: true,
   lastLoginAt: true,
   createdAt: true,
   updatedAt: true,
+});
+
+export const insertPlayerVerificationSchema = createInsertSchema(playerVerifications).omit({
+  id: true,
+  createdAt: true,
 });
 
 export type InsertPlayerAccount = z.infer<typeof insertPlayerAccountSchema>;

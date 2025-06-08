@@ -24,14 +24,17 @@ export default function Games() {
 
   const { data: matches, isLoading: matchesLoading } = useQuery({
     queryKey: ["/api/matches"],
+    select: (data: any) => data || []
   });
 
   const { data: leagues } = useQuery({
     queryKey: ["/api/leagues"],
+    select: (data: any) => data || []
   });
 
   const { data: teams } = useQuery({
     queryKey: ["/api/teams"],
+    select: (data: any) => data || []
   });
 
   // Filter matches based on search and filters

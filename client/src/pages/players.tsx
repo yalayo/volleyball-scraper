@@ -27,10 +27,12 @@ export default function Players() {
 
   const { data: players, isLoading: playersLoading } = useQuery({
     queryKey: ["/api/players"],
+    select: (data: any) => data || []
   });
 
   const { data: teams } = useQuery({
     queryKey: ["/api/teams"],
+    select: (data: any) => data || []
   });
 
   // Get unique positions and nationalities for filters

@@ -25,14 +25,17 @@ export default function Leagues() {
 
   const { data: leagues, isLoading: leaguesLoading } = useQuery({
     queryKey: ["/api/leagues"],
+    select: (data: any) => data || []
   });
 
   const { data: teams } = useQuery({
     queryKey: ["/api/teams"],
+    select: (data: any) => data || []
   });
 
   const { data: matches } = useQuery({
     queryKey: ["/api/matches"],
+    select: (data: any) => data || []
   });
 
   // Filter leagues based on search and filters

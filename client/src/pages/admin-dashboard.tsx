@@ -53,13 +53,15 @@ export default function AdminDashboard() {
   // Get admin stats
   const { data: stats } = useQuery({
     queryKey: ["/api/admin/stats"],
-    enabled: session?.isAuthenticated
+    enabled: session?.isAuthenticated,
+    select: (data: any) => data || {}
   });
 
   // Get admin leagues
   const { data: leagues } = useQuery({
     queryKey: ["/api/admin/leagues"],
-    enabled: session?.isAuthenticated
+    enabled: session?.isAuthenticated,
+    select: (data: any) => data || []
   });
 
   // No longer needed - navigation replaces dialogs

@@ -26,10 +26,12 @@ export default function Teams() {
 
   const { data: teams, isLoading: teamsLoading } = useQuery({
     queryKey: ["/api/teams"],
+    select: (data: any) => data || []
   });
 
   const { data: leagues } = useQuery({
     queryKey: ["/api/leagues"],
+    select: (data: any) => data || []
   });
 
   // Filter teams based on search and filters

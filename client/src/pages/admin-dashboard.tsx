@@ -56,7 +56,7 @@ export default function AdminDashboard() {
 
   // Logout mutation
   const logoutMutation = useMutation({
-    mutationFn: () => apiRequest("/api/admin/logout", { method: "POST" }),
+    mutationFn: () => apiRequest("POST", "/api/admin/logout"),
     onSuccess: () => {
       window.location.href = "/";
     }
@@ -64,12 +64,7 @@ export default function AdminDashboard() {
 
   // Single URL scrape mutation
   const scrapeMutation = useMutation({
-    mutationFn: (url: string) => 
-      apiRequest("/api/scrape", {
-        method: "POST",
-        body: JSON.stringify({ url }),
-        headers: { "Content-Type": "application/json" }
-      }),
+    mutationFn: (url: string) => apiRequest("POST", "/api/scrape", { url }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/leagues"] });
@@ -79,7 +74,7 @@ export default function AdminDashboard() {
 
   // Scrape all URLs mutation
   const scrapeAllMutation = useMutation({
-    mutationFn: () => apiRequest("/api/scrape-all", { method: "POST" }),
+    mutationFn: () => apiRequest("POST", "/api/scrape-all"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/leagues"] });

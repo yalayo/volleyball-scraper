@@ -1,10 +1,22 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { scrapeVolleyballData } from "./scraper";
 import { insertLeagueSchema, insertTeamSchema, insertPlayerSchema } from "@shared/schema";
 import { z } from "zod";
 import session from "express-session";
+
+// Extend session data interface
+declare module 'express-session' {
+  interface SessionData {
+    user?: {
+      id: number;
+      username: string;
+      email: string | null;
+      role: string;
+    };
+  }
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Session middleware for admin authentication
@@ -20,7 +32,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
 
   // Admin authentication middleware
-  const requireAdmin = (req: any, res: any, next: any) => {
+  const requireAdmin = (req: Request, res: Response, next: any) => {
     if (!req.session?.user || req.session.user.role !== 'admin') {
       return res.status(401).json({ message: 'Admin access required' });
     }

@@ -57,10 +57,12 @@ export default function PlayerRegister() {
       if (data.isValid) {
         setRegistrationData(prev => ({ ...prev, samsPlayerId: data.samsPlayerId }));
         setStep('register');
+        setErrors([]);
       }
     },
     onError: (error: Error) => {
       setErrors([error.message]);
+      setValidationResult(null);
     }
   });
 
@@ -148,7 +150,9 @@ export default function PlayerRegister() {
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Your account is pending verification. Please contact your team management to verify your identity and activate your account.
+                <strong>Account Status: Pending Verification</strong><br/>
+                Your account requires verification by 3 teammates or team management to ensure player identity. 
+                Contact your teammates or trainer to validate your account.
               </AlertDescription>
             </Alert>
             <Button 

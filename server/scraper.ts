@@ -1326,31 +1326,36 @@ export async function scrapeVolleyballData(
           const createdMatch = await storageInstance.createMatch(matchData);
           matchCount++;
           
-          // Process PDF scoresheet if URL is available
-          if (matchData.scoresheetPdfUrl && createdMatch.id) {
-            console.log(`Processing PDF for match ${createdMatch.id}: ${matchData.scoresheetPdfUrl}`);
-            try {
-              const { pdfParser } = await import('./pdf-parser');
-              const pdfData = await pdfParser.parsePDFFromUrl(matchData.scoresheetPdfUrl);
-              
-              if (pdfData && pdfData.sets.length > 0) {
-                // Store match sets data
-                for (const setData of pdfData.sets) {
-                  setData.matchId = createdMatch.id;
-                  await storageInstance.createMatchSet(setData);
-                }
-                
-                // Skip lineup processing to prevent foreign key constraint violations
-                // Lineups would need proper team ID mapping which isn't available at this stage
-                console.log(`Skipping lineup processing for match ${createdMatch.id} to prevent database errors`);
-                
-                console.log(`Successfully extracted ${pdfData.sets.length} sets and ${pdfData.lineups.length} lineups from PDF`);
-              } else {
-                console.log(`No detailed data extracted from PDF for match ${createdMatch.id}`);
-              }
-            } catch (error) {
-              console.error(`Failed to process PDF for match ${createdMatch.id}:`, error);
-            }
+          // Process PDF scoresheet if URL is available - TEMPORARILY DISABLED
+          // if (matchData.scoresheetPdfUrl && createdMatch.id) {
+          //   console.log(`Processing PDF for match ${createdMatch.id}: ${matchData.scoresheetPdfUrl}`);
+          //   try {
+          //     const { pdfParser } = await import('./pdf-parser');
+          //     const pdfData = await pdfParser.parsePDFFromUrl(matchData.scoresheetPdfUrl);
+          //     
+          //     if (pdfData && pdfData.sets.length > 0) {
+          //       // Store match sets data
+          //       for (const setData of pdfData.sets) {
+          //         setData.matchId = createdMatch.id;
+          //         await storageInstance.createMatchSet(setData);
+          //       }
+          //       
+          //       // Skip lineup processing to prevent foreign key constraint violations
+          //       // Lineups would need proper team ID mapping which isn't available at this stage
+          //       console.log(`Skipping lineup processing for match ${createdMatch.id} to prevent database errors`);
+          //       
+          //       console.log(`Successfully extracted ${pdfData.sets.length} sets and ${pdfData.lineups.length} lineups from PDF`);
+          //     } else {
+          //       console.log(`No detailed data extracted from PDF for match ${createdMatch.id}`);
+          //     }
+          //   } catch (error) {
+          //     console.error(`Failed to process PDF for match ${createdMatch.id}:`, error);
+          //   }
+          // }
+          
+          console.log(`PDF processing temporarily disabled for match ${createdMatch.id}`);
+          if (matchData.scoresheetPdfUrl) {
+            console.log(`PDF URL available but not processed: ${matchData.scoresheetPdfUrl}`);
           }
           
           // Update team statistics

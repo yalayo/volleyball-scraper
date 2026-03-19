@@ -64,41 +64,6 @@ export default function DataTable<T extends { id: number }>({
       });
     });
   }, [data, searchTerm, columns, extractTextContent]);
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder={searchPlaceholder}
-            disabled
-            className="pl-9"
-          />
-        </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {columns.map((column) => (
-                <TableHead key={column.key}>{column.header}</TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {Array.from({ length: 5 }).map((_, index) => (
-              <TableRow key={index}>
-                {columns.map((column) => (
-                  <TableCell key={column.key}>
-                    <Skeleton className="h-4 w-24" />
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
       <div className="relative">
@@ -106,7 +71,8 @@ export default function DataTable<T extends { id: number }>({
         <Input
           placeholder={searchPlaceholder}
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
+          disabled={loading}
           className="pl-9"
         />
       </div>
@@ -120,7 +86,17 @@ export default function DataTable<T extends { id: number }>({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filteredData.length === 0 ? (
+          {loading ? (
+            Array.from({ length: 5 }).map((_, index) => (
+              <TableRow key={index}>
+                {columns.map((column) => (
+                  <TableCell key={column.key}>
+                    <Skeleton className="h-4 w-24" />
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))
+          ) : filteredData.length === 0 ? (
             <TableRow>
               <TableCell colSpan={columns.length} className="text-center py-8 text-gray-500">
                 {searchTerm ? "No results found" : "No data available"}

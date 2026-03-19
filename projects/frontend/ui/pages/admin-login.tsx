@@ -1,11 +1,20 @@
-import React from "react";
-import { useState } from "react";
+import React, { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Shield, Eye, EyeOff } from "lucide-react";
+
+const schema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required"),
+});
+
+type FormValues = z.infer<typeof schema>;
 
 interface AdminLoginProps {
   onSubmit?: (data: { username: string; password: string }) => void;
@@ -16,45 +25,37 @@ interface AdminLoginProps {
 }
 
 export default function AdminLogin(props: AdminLoginProps) {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-  const [isPending, setIsPending] = useState(false);
 
-  const isLoading = props.isLoading ?? isPending;
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { username: "", password: "" },
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const isLoading = props.isLoading ?? form.formState.isSubmitting;
+
+  const onSubmit = async (data: FormValues) => {
     setError("");
 
-    if (!username.trim() || !password.trim()) {
-      setError("Please enter both username and password.");
-      return;
-    }
-
     if (props.onSubmit) {
-      props.onSubmit({ username: username.trim(), password });
+      props.onSubmit(data);
       return;
     }
 
-    // Fallback: direct fetch if no onSubmit prop provided
-    setIsPending(true);
     try {
       const response = await fetch("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: username.trim(), password }),
+        body: JSON.stringify(data),
       });
 
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error((data as any).message || "Login failed. Please check your credentials.");
+        const body = await response.json().catch(() => ({}));
+        throw new Error((body as any).message || "Login failed. Please check your credentials.");
       }
     } catch (err: any) {
       setError(err.message || "Login failed. Please check your credentials.");
-    } finally {
-      setIsPending(false);
     }
   };
 
@@ -66,87 +67,81 @@ export default function AdminLogin(props: AdminLoginProps) {
             <Shield className="h-8 w-8 text-blue-600" />
           </div>
           <CardTitle className="text-2xl">Admin Access</CardTitle>
-          <CardDescription>
-            Sign in to access the administrative dashboard
-          </CardDescription>
+          <CardDescription>Sign in to access the administrative dashboard</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
 
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter admin username"
-                disabled={isLoading}
-                required
+              <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="Enter admin username"
+                        disabled={isLoading}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter admin password"
-                  disabled={isLoading}
-                  required
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                  onClick={() => setShowPassword(!showPassword)}
-                  disabled={isLoading}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Enter admin password"
+                          disabled={isLoading}
+                          {...field}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowPassword(!showPassword)}
+                          disabled={isLoading}
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading}
-            >
-              {isLoading ? "Signing in..." : "Sign In"}
-            </Button>
-          </form>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Signing in..." : "Sign In"}
+              </Button>
+            </form>
+          </Form>
 
           <div className="mt-6 pt-4 border-t text-center">
-            {props.onGoHome ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={props.onGoHome}
-              >
-                ← Back to Home
-              </Button>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => window.location.href = "/"}
-              >
-                ← Back to Home
-              </Button>
-            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={props.onGoHome ?? (() => { window.location.href = "/"; })}
+            >
+              ← Back to Home
+            </Button>
           </div>
         </CardContent>
       </Card>

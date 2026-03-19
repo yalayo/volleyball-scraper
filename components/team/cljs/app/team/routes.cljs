@@ -7,5 +7,5 @@
      :post {:handler handler/create}}]
    ["/teams/:id"
     {:get    {:handler handler/get-one}
-     :put    {:handler handler/update}
+     :put    {:handler handler/update!}
      :delete {:handler handler/delete}}]])

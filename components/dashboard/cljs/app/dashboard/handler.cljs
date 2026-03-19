@@ -6,7 +6,7 @@
 (defn get-occupancy [{:keys [_request _env]}]
   (js-await [{:keys [success results]} (db/query+ {:select [[[:count :*] :total]
                                                              [[:sum :occupied] :occupied]]
-                                                    :from   [:props_apartments]})]
+                                                    :from   [:volley_apartments]})]
             (if success
               (let [{:keys [total occupied]} (first results)
                     occupied (or occupied 0)

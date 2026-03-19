@@ -7,5 +7,5 @@
      :post {:handler handler/create}}]
    ["/leagues/:id"
     {:get    {:handler handler/get-one}
-     :put    {:handler handler/update}
+     :put    {:handler handler/update!}
      :delete {:handler handler/delete}}]])

@@ -8,6 +8,7 @@
             [app.register-ui.interface :as register]
             [app.volleyball-ui.subs :as vb-subs]
             [app.volleyball-ui.events :as vb-events]
+            [app.auth-ui.config :as api-config]
             ;; React page imports
             ["/pages/landing$default"      :as landing-js]
             ["/pages/dashboard$default"    :as dashboard-js]
@@ -36,9 +37,10 @@
         :matches    (clj->js matches)
         :scrapeLogs (clj->js scrape-logs)
         :isLoading  loading?
-        :authToken  auth-token
-        :onRefresh  #(re-frame/dispatch [::vb-events/load-data])
-        :onLogout   #(re-frame/dispatch [::events/sign-out])}])))
+        :authToken   auth-token
+        :apiBaseUrl  (api-config/get-api-url)
+        :onRefresh   #(re-frame/dispatch [::vb-events/load-data])
+        :onLogout    #(re-frame/dispatch [::events/sign-out])}])))
 
 (defn component []
   (let [active @(re-frame/subscribe [::subs/active-section])]

@@ -1,0 +1,17 @@
+{:deps true
+ :builds {:home
+          {:target :browser
+           :output-dir "./resources/public/js"
+           :asset-path "/"
+           :modules {:app {:init-fn app.web.core/home}}
+           :devtools {:preloads [day8.re-frame-10x.preload]
+                      :watch-dir "./resources/public"
+                      :http-root "resources/public"  ;; serve static files here
+                      :http-port 8081}
+           :dev {:compiler-options {:closure-defines {re-frame.trace.trace-enabled? true
+                                                      day8.re-frame.tracing.trace-enabled? true
+                                                      "re_frame.trace.trace_enabled_QMARK_" true
+                                                      "day8.re_frame.tracing.trace_enabled_QMARK_"  true}}}
+           :release {:compiler-options {:optimizations :simple}
+                     :output-dir "out/public/js"}
+           :optimizations :none}}}

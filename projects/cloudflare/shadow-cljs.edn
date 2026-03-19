@@ -1,0 +1,12 @@
+{:deps true
+ :builds {:server {:target :esm
+                   :output-dir "out"
+                   :modules {:main {:exports {default app.cloudflare.core/handler
+                                              PresenceDurableObject app.worker.core/PresenceDurableObject}}}
+                   :js-options {:js-provider :import}
+                   :devtools {:enabled false}
+                   :release
+                    {:js-options {:optimizations :advanced
+                                  :pretty-print false
+                                  :source-map false}
+                     :devtools {:enabled false}}}}}

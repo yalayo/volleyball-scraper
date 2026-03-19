@@ -1,0 +1,12 @@
+node_modules
+out
+.wrangler/
+.shadow-cljs/
+.nrepl-port
+.dev.vars
+
+# Frontend code
+public/js/cljs-runtime/
+public/js/manifest.edn
+public/js/app.js
+public/css/

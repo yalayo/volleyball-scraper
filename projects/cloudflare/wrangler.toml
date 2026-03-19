@@ -1,0 +1,29 @@
+name = "leagues-backend"
+main = "out/main.js"
+compatibility_date = "2025-02-04"
+compatibility_flags = ["nodejs_compat"]
+
+[observability]
+enabled = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "main-db"
+database_id = "local"
+migrations_dir = "./migrations"
+migrations_table = "local_migrations"
+
+[env.production]
+name = "leagues-backend-production"
+vars = { NODE_ENV = "production" }
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "main-db"
+database_id = "${DATABASE_ID}"
+migrations_dir = "migrations"
+migrations_table = "prod_migrations"
+
+[[env.production.routes]]
+pattern = "leagues-api.busqandote.com/*"
+zone_id = "${ZONE_ID}"

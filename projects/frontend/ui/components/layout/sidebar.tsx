@@ -17,11 +17,12 @@ interface SidebarProps {
   onStartScraping: () => void;
   activeTab: string;
   onTabChange: (tab: string) => void;
+  onLogout?: () => void;
 }
 
 export default function Sidebar({ onStartScraping, activeTab, onTabChange }: SidebarProps) {
   return (
-    <div className="w-64 bg-white shadow-lg border-r border-gray-200 flex flex-col">
+    <div className="w-64 shrink-0 bg-white shadow-lg border-r border-gray-200 flex flex-col h-full overflow-y-auto">
       {/* Header */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center space-x-3">

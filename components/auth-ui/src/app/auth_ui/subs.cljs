@@ -10,3 +10,8 @@
  ::sign-in-loading
  (fn [db _]
    (get-in db [:user :sign-in :loading?] false)))
+
+(re-frame/reg-sub
+ ::auth-token
+ (fn [db _]
+   (get-in db [:user :token])))

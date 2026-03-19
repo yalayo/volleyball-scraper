@@ -11,10 +11,11 @@ import { Play } from "lucide-react";
 interface ScrapingModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  authToken?: string;
   onSuccess?: () => void;
 }
 
-export default function ScrapingModal({ open, onOpenChange, onSuccess }: ScrapingModalProps) {
+export default function ScrapingModal({ open, onOpenChange, authToken, onSuccess }: ScrapingModalProps) {
   const [url, setUrl] = useState("");
   const [leagueName, setLeagueName] = useState("");
   const [category, setCategory] = useState("");
@@ -47,9 +48,11 @@ export default function ScrapingModal({ open, onOpenChange, onSuccess }: Scrapin
 
     setIsPending(true);
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
       const response = await fetch("/api/scrape", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ url, leagueName, category }),
       });
 

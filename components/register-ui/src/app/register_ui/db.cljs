@@ -2,7 +2,7 @@
 
 (def default-db {:user-loged-in? false :initialised? false})
 
-(def ls-key "props-state")
+(def ls-key "volley-state")
 
 (defn db->local-store [db]
   (.setItem js/localStorage ls-key (str db)))

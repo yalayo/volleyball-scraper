@@ -45,6 +45,7 @@ interface DashboardProps {
   matches?: (Match & { homeTeam?: Team; awayTeam?: Team; league?: League })[];
   scrapeLogs?: ScrapeLog[];
   isLoading?: boolean;
+  authToken?: string;
   onRefresh?: () => void;
   onLogout?: () => void;
 }
@@ -654,6 +655,8 @@ export default function Dashboard(props: DashboardProps) {
       <ScrapingModal
         open={showScrapingModal}
         onOpenChange={setShowScrapingModal}
+        authToken={props.authToken}
+        onSuccess={props.onRefresh}
       />
 
       <TeamPlayersModal

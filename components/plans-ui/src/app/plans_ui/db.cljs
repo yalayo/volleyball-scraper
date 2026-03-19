@@ -1,6 +1,6 @@
 (ns app.plans-ui.db)
 
-(def ls-key "props-state")
+(def ls-key "volley-state")
 
 (defn db->local-store [db]
   (.setItem js/localStorage ls-key (str db)))

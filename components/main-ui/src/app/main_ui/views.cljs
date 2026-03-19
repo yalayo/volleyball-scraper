@@ -4,6 +4,7 @@
             [app.main-ui.subs   :as subs]
             [app.main-ui.events :as events]
             [app.auth-ui.views      :as auth]
+            [app.auth-ui.subs       :as auth-subs]
             [app.register-ui.interface :as register]
             [app.volleyball-ui.subs :as vb-subs]
             [app.volleyball-ui.events :as vb-events]
@@ -19,13 +20,14 @@
 (defn dashboard-component []
   (re-frame/dispatch [::vb-events/load-data])
   (fn []
-    (let [stats      @(re-frame/subscribe [::vb-subs/stats])
-          leagues    @(re-frame/subscribe [::vb-subs/leagues])
-          teams      @(re-frame/subscribe [::vb-subs/teams])
-          players    @(re-frame/subscribe [::vb-subs/players])
-          matches    @(re-frame/subscribe [::vb-subs/matches])
+    (let [stats       @(re-frame/subscribe [::vb-subs/stats])
+          leagues     @(re-frame/subscribe [::vb-subs/leagues])
+          teams       @(re-frame/subscribe [::vb-subs/teams])
+          players     @(re-frame/subscribe [::vb-subs/players])
+          matches     @(re-frame/subscribe [::vb-subs/matches])
           scrape-logs @(re-frame/subscribe [::vb-subs/scrape-logs])
-          loading?   @(re-frame/subscribe [::vb-subs/loading?])]
+          loading?    @(re-frame/subscribe [::vb-subs/loading?])
+          auth-token  @(re-frame/subscribe [::auth-subs/auth-token])]
       [dashboard
        {:stats      (when stats (clj->js stats))
         :leagues    (clj->js leagues)
@@ -34,6 +36,7 @@
         :matches    (clj->js matches)
         :scrapeLogs (clj->js scrape-logs)
         :isLoading  loading?
+        :authToken  auth-token
         :onRefresh  #(re-frame/dispatch [::vb-events/load-data])
         :onLogout   #(re-frame/dispatch [::events/sign-out])}])))
 

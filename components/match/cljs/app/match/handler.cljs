@@ -2,7 +2,8 @@
   (:require ["jsonwebtoken" :as jwt]
             [app.worker.async :refer [js-await]]
             [app.worker.db :as db]
-            [app.worker.cf :as cf]))
+            [app.worker.cf :as cf]
+            [app.match.scraper :as scraper]))
 
 ;; ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -131,20 +132,21 @@
                             (cf/response-edn {:message "Admin user created successfully"} {:status 201})
                             (cf/response-error "Failed to create admin user")))))))
 
-;; ── scraping endpoints ───────────────────────────────────────────────────────
+;; ── scraping endpoints ────────────────────────────────────────────────────────
 
-(defn trigger-scrape [{:keys [request env]}]
-  (js-await [data              (cf/request->auto request)
-             {:keys [success]} (db/run+ env {:insert-into :volley_scrape_logs
-                                             :columns     [:operation :status :message :details]
-                                             :values      [["manual-scrape" "pending"
-                                                            (str "Scrape triggered for: " (:url data) " (" (:leagueName data) ")")
-                                                            (:url data)]]})]
-            (if success
-              (cf/response-edn {:message "Scraping initiated"} {:status 200})
-              (cf/response-error "Failed to initiate scrape"))))
+(defn trigger-scrape [{:keys [request env execution-ctx]}]
+  (js-await [data (cf/request->auto request)]
+            (let [url         (:url data)
+                  league-name (or (:leagueName data) (str "League from " url))
+                  category    (or (:category data) "General")]
+              (if-not url
+                (cf/response-edn {:error "url is required"} {:status 400})
+                (do
+                  (.waitUntil execution-ctx
+                               (scraper/scrape-league! env url league-name category))
+                  (cf/response-edn {:message (str "Scraping started for: " league-name)} {:status 200}))))))
 
-(defn trigger-league-scrape [{:keys [route env]}]
+(defn trigger-league-scrape [{:keys [route env execution-ctx]}]
   (let [id (js/parseInt (-> route :path-params :id) 10)]
     (js-await [{:keys [success results]} (db/query+ {:select [:*]
                                                       :from   [:volley_leagues]
@@ -154,11 +156,7 @@
                   (cf/response-error "League not found" {:status 404})
                   (if-not (:url league)
                     (cf/response-error "League URL not set" {:status 400})
-                    (js-await [{:keys [success]} (db/run+ env {:insert-into :volley_scrape_logs
-                                                               :columns     [:operation :status :message :details]
-                                                               :values      [["league-scrape" "pending"
-                                                                              (str "Scrape triggered for league: " (:name league))
-                                                                              (:url league)]]})]
-                              (if success
-                                (cf/response-edn {:message "League scraping initiated"} {:status 200})
-                                (cf/response-error "Failed to initiate scrape")))))))))
+                    (do
+                      (.waitUntil execution-ctx
+                                   (scraper/scrape-league! env (:url league) (:name league) (:category league)))
+                      (cf/response-edn {:message (str "Scraping started for league: " (:name league))} {:status 200}))))))))

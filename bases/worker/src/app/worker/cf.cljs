@@ -101,6 +101,20 @@
 							 :else x))]
 		 (f x))))
 
+(defn request->json
+  "Reads the request body as JSON, returning a keywordized CLJS map"
+  [^js request]
+  (js-await [text (.text request)]
+    (js->clj (.parse js/JSON text) :keywordize-keys true)))
+
+(defn request->auto
+  "Reads the request body as EDN or JSON depending on Content-Type header"
+  [^js request]
+  (let [ct (or (.get (.-headers request) "content-type") "")]
+    (if (>= (.indexOf ct "application/json") 0)
+      (request->json request)
+      (request->edn request))))
+
 (defn ring->fetch [handler ^js request env ctx]
   (js/Promise.
    (fn [resolve reject]

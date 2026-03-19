@@ -17,7 +17,13 @@ import {
   MapPin
 } from "lucide-react";
 
-export default function Landing() {
+interface LandingProps {
+  onSignIn?: () => void;
+  onSignUp?: () => void;
+  onEnter?: () => void;
+}
+
+export default function Landing(props: LandingProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
       {/* Header */}
@@ -29,10 +35,10 @@ export default function Landing() {
               <span className="text-xl font-bold text-gray-900">VolleyStats Pro</span>
             </div>
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" onClick={() => window.location.href = '/player-login'}>
-                Player Login
+              <Button variant="ghost" size="sm" onClick={props.onSignIn}>
+                Admin Login
               </Button>
-              <Button onClick={() => window.location.href = '/player-register'}>
+              <Button onClick={props.onSignUp}>
                 Join Now
               </Button>
             </div>
@@ -57,12 +63,12 @@ export default function Landing() {
               coaches, and clubs across all German leagues.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" onClick={() => window.location.href = '/player-register'}>
+              <Button size="lg" onClick={props.onSignUp}>
                 Start Your Journey
                 <ArrowRight className="h-5 w-5 ml-2" />
               </Button>
-              <Button size="lg" variant="outline">
-                View Live Demo
+              <Button size="lg" variant="outline" onClick={props.onEnter}>
+                View Dashboard
               </Button>
             </div>
           </div>
@@ -275,11 +281,11 @@ export default function Landing() {
             to reach their full potential.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" onClick={() => window.location.href = '/player-register'}>
+            <Button size="lg" onClick={props.onSignUp}>
               Get Started Free
             </Button>
-            <Button size="lg" variant="outline">
-              Schedule Demo
+            <Button size="lg" variant="outline" onClick={props.onEnter}>
+              View Dashboard
             </Button>
           </div>
         </div>

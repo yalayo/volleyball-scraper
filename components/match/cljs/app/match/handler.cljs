@@ -83,7 +83,7 @@
 ;; ── admin auth endpoints ─────────────────────────────────────────────────────
 
 (defn admin-login [{:keys [request env]}]
-  (js-await [data                     (cf/request->edn request)
+  (js-await [data                     (cf/request->auto request)
              {:keys [success results]} (db/query+ {:select [:*]
                                                     :from   [:volley_admin_users]
                                                     :where  [:= :username (:username data)]})]
@@ -116,7 +116,7 @@
 (defn admin-setup [{:keys [request env]}]
   (js-await [{:keys [success results]} (db/query+ {:select [[[:count :*] :total]]
                                                     :from   [:volley_admin_users]})
-             data                      (cf/request->edn request)]
+             data                      (cf/request->auto request)]
             (let [cnt (-> results first :total (or 0))]
               (if (> cnt 0)
                 (cf/response-edn {:message "Admin user already exists"} {:status 409})
@@ -134,11 +134,11 @@
 ;; ── scraping endpoints ───────────────────────────────────────────────────────
 
 (defn trigger-scrape [{:keys [request env]}]
-  (js-await [data              (cf/request->edn request)
+  (js-await [data              (cf/request->auto request)
              {:keys [success]} (db/run+ env {:insert-into :volley_scrape_logs
                                              :columns     [:operation :status :message :details]
                                              :values      [["manual-scrape" "pending"
-                                                            (str "Scrape triggered for: " (:url data) " (" (:league-name data) ")")
+                                                            (str "Scrape triggered for: " (:url data) " (" (:leagueName data) ")")
                                                             (:url data)]]})]
             (if success
               (cf/response-edn {:message "Scraping initiated"} {:status 200})

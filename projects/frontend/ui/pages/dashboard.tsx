@@ -46,6 +46,7 @@ interface DashboardProps {
   scrapeLogs?: ScrapeLog[];
   isLoading?: boolean;
   authToken?: string;
+  apiBaseUrl?: string;
   onRefresh?: () => void;
   onLogout?: () => void;
 }
@@ -656,6 +657,7 @@ export default function Dashboard(props: DashboardProps) {
         open={showScrapingModal}
         onOpenChange={setShowScrapingModal}
         authToken={props.authToken}
+        apiBaseUrl={props.apiBaseUrl}
         onSuccess={props.onRefresh}
       />
 

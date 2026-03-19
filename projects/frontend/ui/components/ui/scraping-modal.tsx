@@ -23,10 +23,11 @@ interface ScrapingModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   authToken?: string;
+  apiBaseUrl?: string;
   onSuccess?: () => void;
 }
 
-export default function ScrapingModal({ open, onOpenChange, authToken, onSuccess }: ScrapingModalProps) {
+export default function ScrapingModal({ open, onOpenChange, authToken, apiBaseUrl, onSuccess }: ScrapingModalProps) {
   const [error, setError] = useState("");
 
   const form = useForm<FormValues>({
@@ -47,7 +48,8 @@ export default function ScrapingModal({ open, onOpenChange, authToken, onSuccess
     try {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
-      const response = await fetch("/api/scrape", {
+      const baseUrl = apiBaseUrl ?? "";
+      const response = await fetch(`${baseUrl}/api/scrape`, {
         method: "POST",
         headers,
         body: JSON.stringify(data),

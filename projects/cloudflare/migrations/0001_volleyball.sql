@@ -1,4 +1,4 @@
-CREATE TABLE `props_leagues` (
+CREATE TABLE `volley_leagues` (
     `id`          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     `name`        TEXT NOT NULL,
     `category`    TEXT NOT NULL,
@@ -11,7 +11,7 @@ CREATE TABLE `props_leagues` (
     `updated_at`  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
-CREATE TABLE `props_teams` (
+CREATE TABLE `volley_teams` (
     `id`              INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     `name`            TEXT NOT NULL,
     `location`        TEXT,
@@ -25,10 +25,10 @@ CREATE TABLE `props_teams` (
     `is_active`       INTEGER DEFAULT 1,
     `created_at`      TEXT NOT NULL DEFAULT (datetime('now')),
     `updated_at`      TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (`league_id`) REFERENCES `props_leagues` (`id`)
+    FOREIGN KEY (`league_id`) REFERENCES `volley_leagues` (`id`)
 );
 
-CREATE TABLE `props_players` (
+CREATE TABLE `volley_players` (
     `id`            INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     `name`          TEXT NOT NULL,
     `position`      TEXT,
@@ -39,10 +39,10 @@ CREATE TABLE `props_players` (
     `is_active`     INTEGER DEFAULT 1,
     `created_at`    TEXT NOT NULL DEFAULT (datetime('now')),
     `updated_at`    TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (`team_id`) REFERENCES `props_teams` (`id`)
+    FOREIGN KEY (`team_id`) REFERENCES `volley_teams` (`id`)
 );
 
-CREATE TABLE `props_matches` (
+CREATE TABLE `volley_matches` (
     `id`                  INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     `match_id`            TEXT,
     `home_team_id`        INTEGER,
@@ -63,12 +63,12 @@ CREATE TABLE `props_matches` (
     `sams_url`            TEXT,
     `created_at`          TEXT NOT NULL DEFAULT (datetime('now')),
     `updated_at`          TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (`home_team_id`) REFERENCES `props_teams` (`id`),
-    FOREIGN KEY (`away_team_id`) REFERENCES `props_teams` (`id`),
-    FOREIGN KEY (`league_id`)    REFERENCES `props_leagues` (`id`)
+    FOREIGN KEY (`home_team_id`) REFERENCES `volley_teams` (`id`),
+    FOREIGN KEY (`away_team_id`) REFERENCES `volley_teams` (`id`),
+    FOREIGN KEY (`league_id`)    REFERENCES `volley_leagues` (`id`)
 );
 
-CREATE TABLE `props_scrape_logs` (
+CREATE TABLE `volley_scrape_logs` (
     `id`                INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     `operation`         TEXT NOT NULL,
     `status`            TEXT NOT NULL,

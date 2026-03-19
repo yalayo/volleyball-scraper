@@ -11,7 +11,7 @@ Work through the following checklist in order. Read each referenced existing fil
 Create `projects/cloudflare/migrations/000N_$ARGUMENTS.sql` (increment N from the latest file).
 
 **Rules:**
-- Table name prefix is always `props_` (e.g. `props_$ARGUMENTS`)
+- Table name prefix is always `volley_` (e.g. `volley_$ARGUMENTS`)
 - Use `INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL` for `id`
 - Foreign key columns: `INTEGER NOT NULL` with `FOREIGN KEY` constraint
 - Use `TEXT` for strings, `INTEGER` for booleans (0/1) and numbers
@@ -200,7 +200,7 @@ components/$ARGUMENTS-ui/
 
 ## 7. Final Checklist
 
-- [ ] Migration file created with `props_` prefix
+- [ ] Migration file created with `volley_` prefix
 - [ ] Backend component: `handler.cljs`, `routes.cljs`, `interface.cljs`, `deps.edn`
 - [ ] Backend wired: `cloudflare/deps.edn`, `cloudflare/core.cljs`, `worker/core.cljs`
 - [ ] TSX components use `react-hook-form` + `zod` — no raw `onChange` handlers

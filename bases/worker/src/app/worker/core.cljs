@@ -25,7 +25,7 @@
 
 (def allowed-origins
   #{"http://localhost:8081"
-    "https://miete.busqandote.com"})
+    "https://leagues.busqandote.com"})
 
 (defn cors-headers-for [origin]
   (if (allowed-origins origin)

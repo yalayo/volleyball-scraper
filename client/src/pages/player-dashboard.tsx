@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,9 +27,11 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import VerificationGate from "./verification-gate";
+import LanguageSwitcher from "@/components/ui/language-switcher";
 
 // Training Invitations Component
 function TrainingInvitationsTab({ playerAccountId }: { playerAccountId: number }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   
   const { data: invitations, isLoading } = useQuery({
@@ -62,7 +65,7 @@ function TrainingInvitationsTab({ playerAccountId }: { playerAccountId: number }
     return (
       <div className="text-center py-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="mt-2 text-gray-600">Loading invitations...</p>
+        <p className="mt-2 text-gray-600">{t("playerDashboard.invitations.loading")}</p>
       </div>
     );
   }
@@ -71,8 +74,8 @@ function TrainingInvitationsTab({ playerAccountId }: { playerAccountId: number }
     return (
       <div className="text-center py-8">
         <Mail className="mx-auto h-12 w-12 text-gray-400" />
-        <p className="mt-2 text-gray-600">No training invitations</p>
-        <p className="text-sm text-gray-500">Check back later for training opportunities!</p>
+        <p className="mt-2 text-gray-600">{t("playerDashboard.invitations.empty")}</p>
+        <p className="text-sm text-gray-500">{t("playerDashboard.invitations.emptyHint")}</p>
       </div>
     );
   }
@@ -96,7 +99,7 @@ function TrainingInvitationsTab({ playerAccountId }: { playerAccountId: number }
                 </div>
                 <div className="flex items-center">
                   <Users className="mr-1 h-4 w-4" />
-                  Invited by {invitation.inviterName}
+                  {t("playerDashboard.invitations.invitedBy", { name: invitation.inviterName })}
                 </div>
               </div>
             </div>
@@ -109,7 +112,7 @@ function TrainingInvitationsTab({ playerAccountId }: { playerAccountId: number }
                     size="sm"
                     className="bg-green-600 hover:bg-green-700"
                   >
-                    {acceptInvitationMutation.isPending ? 'Accepting...' : 'Accept'}
+                    {t("playerDashboard.invitations.accept")}
                   </Button>
                   <Button
                     onClick={() => declineInvitationMutation.mutate(invitation.id)}
@@ -117,7 +120,7 @@ function TrainingInvitationsTab({ playerAccountId }: { playerAccountId: number }
                     size="sm"
                     variant="outline"
                   >
-                    {declineInvitationMutation.isPending ? 'Declining...' : 'Decline'}
+                    {t("playerDashboard.invitations.decline")}
                   </Button>
                 </>
               ) : (
@@ -135,6 +138,7 @@ function TrainingInvitationsTab({ playerAccountId }: { playerAccountId: number }
 
 // Summer League Management Component
 function SummerLeagueManagementTab({ playerAccountId }: { playerAccountId: number }) {
+  const { t } = useTranslation();
   const [showCreateLeague, setShowCreateLeague] = useState(false);
   const [showCreateTeam, setShowCreateTeam] = useState(false);
   const queryClient = useQueryClient();
@@ -181,7 +185,7 @@ function SummerLeagueManagementTab({ playerAccountId }: { playerAccountId: numbe
     return (
       <div className="text-center py-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="mt-2 text-gray-600">Loading summer leagues...</p>
+        <p className="mt-2 text-gray-600">{t("common.loading")}</p>
       </div>
     );
   }
@@ -195,22 +199,22 @@ function SummerLeagueManagementTab({ playerAccountId }: { playerAccountId: numbe
           className="flex items-center"
         >
           <Plus className="mr-2 h-4 w-4" />
-          Create Summer League
+          {t("playerDashboard.summerLeagues.createLeague")}
         </Button>
-        <Button 
+        <Button
           onClick={() => setShowCreateTeam(true)}
           variant="outline"
           className="flex items-center"
         >
           <Plus className="mr-2 h-4 w-4" />
-          Create Team
+          {t("playerDashboard.summerLeagues.createTeam")}
         </Button>
       </div>
 
       {/* My Teams */}
       {myTeams && myTeams.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold mb-3">My Teams</h3>
+          <h3 className="text-lg font-semibold mb-3">{t("playerDashboard.summerLeagues.myTeams")}</h3>
           <div className="grid gap-4">
             {myTeams.map((team: any) => (
               <div key={team.id} className="border rounded-lg p-4">
@@ -232,12 +236,12 @@ function SummerLeagueManagementTab({ playerAccountId }: { playerAccountId: numbe
 
       {/* Available Summer Leagues */}
       <div>
-        <h3 className="text-lg font-semibold mb-3">Available Summer Leagues</h3>
+        <h3 className="text-lg font-semibold mb-3">{t("playerDashboard.summerLeagues.available")}</h3>
         {!summerLeagues || summerLeagues.length === 0 ? (
           <div className="text-center py-8">
             <Sun className="mx-auto h-12 w-12 text-gray-400" />
-            <p className="mt-2 text-gray-600">No summer leagues available</p>
-            <p className="text-sm text-gray-500">Create the first summer league!</p>
+            <p className="mt-2 text-gray-600">{t("playerDashboard.summerLeagues.empty")}</p>
+            <p className="text-sm text-gray-500">{t("playerDashboard.summerLeagues.emptyHint")}</p>
           </div>
         ) : (
           <div className="grid gap-4">
@@ -248,12 +252,12 @@ function SummerLeagueManagementTab({ playerAccountId }: { playerAccountId: numbe
                     <h4 className="font-medium">{league.name}</h4>
                     <p className="text-sm text-gray-600">{league.description}</p>
                     <p className="text-sm text-gray-500">
-                      Season: {league.season} • {league.teamCount || 0} teams
+                      {t("playerDashboard.summerLeagues.season")} {league.season} • {league.teamCount || 0} teams
                     </p>
                   </div>
                   <div className="text-right">
                     <Badge variant={league.registrationOpen ? 'default' : 'secondary'}>
-                      {league.registrationOpen ? 'Open' : 'Closed'}
+                      {league.registrationOpen ? t("playerDashboard.summerLeagues.open") : t("playerDashboard.summerLeagues.closed")}
                     </Badge>
                   </div>
                 </div>
@@ -468,6 +472,7 @@ interface TrainingSession {
 }
 
 export default function PlayerDashboard() {
+  const { t } = useTranslation();
   const [player, setPlayer] = useState<PlayerAccount | null>(null);
   const queryClient = useQueryClient();
 
@@ -566,17 +571,20 @@ export default function PlayerDashboard() {
               <Volleyball className="h-8 w-8 text-blue-600 mr-3" />
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  Player Dashboard
+                  {t("playerDashboard.title")}
                 </h1>
                 <p className="text-gray-600">
-                  Welcome back, {player.firstName} {player.lastName}
+                  {t("playerDashboard.welcome", { name: `${player.firstName} ${player.lastName}` })}
                 </p>
               </div>
             </div>
-            <Button onClick={handleLogout} variant="outline" size="sm">
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
-            </Button>
+            <div className="flex items-center space-x-2">
+              <LanguageSwitcher />
+              <Button onClick={handleLogout} variant="outline" size="sm">
+                <LogOut className="mr-2 h-4 w-4" />
+                {t("nav.logout")}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -586,7 +594,7 @@ export default function PlayerDashboard() {
           <Alert className="mb-6">
             <CheckCircle className="h-4 w-4" />
             <AlertDescription>
-              Your account is verified! You have full access to team features and training sessions.
+              {t("playerDashboard.verifiedMessage")}
             </AlertDescription>
           </Alert>
         )}
@@ -597,34 +605,33 @@ export default function PlayerDashboard() {
             <CardHeader>
               <CardTitle className="flex items-center text-yellow-800">
                 <Clock className="mr-2 h-5 w-5" />
-                Account Verification Pending
+                {t("playerDashboard.pendingTitle")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="text-yellow-700">
                 <p className="mb-4">
-                  Your player account is currently pending verification. To access team features, you need to be validated by:
+                  {t("playerDashboard.pendingDescription")}
                 </p>
                 <ul className="list-disc list-inside space-y-2 mb-4">
-                  <li>Three or more teammates who are already verified</li>
-                  <li>Your team trainer or coach</li>
-                  <li>A system administrator</li>
+                  <li>{t("playerDashboard.pendingVerifiers")}</li>
+                  <li>{t("playerDashboard.pendingTrainer")}</li>
+                  <li>{t("playerDashboard.pendingAdmin")}</li>
                 </ul>
                 <p className="text-sm">
-                  Once verified, you'll have full access to view your team's matches, organize training sessions, 
-                  and connect with teammates. Please contact your team members or coach to complete the verification process.
+                  {t("playerDashboard.pendingOnceVerified")}
                 </p>
               </div>
               
               <div className="mt-6 p-4 bg-white rounded-lg border">
-                <h4 className="font-medium text-gray-900 mb-2">Your Player Information:</h4>
+                <h4 className="font-medium text-gray-900 mb-2">{t("playerDashboard.yourInfo")}</h4>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-gray-600">Name:</span>
+                    <span className="text-gray-600">{t("playerDashboard.name")}</span>
                     <span className="ml-2 font-medium">{player.firstName} {player.lastName}</span>
                   </div>
                   <div>
-                    <span className="text-gray-600">SAMS Player ID:</span>
+                    <span className="text-gray-600">{t("playerDashboard.samsId")}</span>
                     <span className="ml-2 font-medium">{player.samsPlayerId}</span>
                   </div>
                   <div>
@@ -647,7 +654,7 @@ export default function PlayerDashboard() {
               <CardHeader>
                 <CardTitle className="flex items-center text-green-800">
                   <Trophy className="mr-2 h-5 w-5" />
-                  Your Team Information
+                  {t("playerDashboard.teamInfo")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -659,7 +666,7 @@ export default function PlayerDashboard() {
                 ) : (
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="text-gray-600">Player:</span>
+                      <span className="text-gray-600">{t("playerDashboard.player")}</span>
                       <span className="ml-2 font-medium">{player.firstName} {player.lastName}</span>
                     </div>
                     <div>
@@ -667,7 +674,7 @@ export default function PlayerDashboard() {
                       <span className="ml-2 font-medium">{player.samsPlayerId}</span>
                     </div>
                     <div>
-                      <span className="text-gray-600">Team:</span>
+                      <span className="text-gray-600">{t("playerDashboard.teamLabel")}</span>
                       <span className="ml-2 font-medium">
                         {teamInfo ? teamInfo.name : 'No team assigned'}
                       </span>
@@ -683,8 +690,8 @@ export default function PlayerDashboard() {
                       </div>
                     )}
                     <div>
-                      <span className="text-gray-600">Team Access:</span>
-                      <span className="ml-2 text-green-700 font-medium">Full Access</span>
+                      <span className="text-gray-600">{t("playerDashboard.teamAccess")}</span>
+                      <span className="ml-2 text-green-700 font-medium">{t("playerDashboard.fullAccess")}</span>
                     </div>
                   </div>
                 )}
@@ -693,11 +700,11 @@ export default function PlayerDashboard() {
 
             <Tabs defaultValue="matches" className="space-y-6">
               <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="matches">Team Matches</TabsTrigger>
-                <TabsTrigger value="training">Training Sessions</TabsTrigger>
-                <TabsTrigger value="teammates">Teammates</TabsTrigger>
-                <TabsTrigger value="invitations">Training Invitations</TabsTrigger>
-                <TabsTrigger value="summer">Summer Leagues</TabsTrigger>
+                <TabsTrigger value="matches">{t("playerDashboard.tabs.matches")}</TabsTrigger>
+                <TabsTrigger value="training">{t("playerDashboard.tabs.training")}</TabsTrigger>
+                <TabsTrigger value="teammates">{t("playerDashboard.tabs.teammates")}</TabsTrigger>
+                <TabsTrigger value="invitations">{t("playerDashboard.tabs.invitations")}</TabsTrigger>
+                <TabsTrigger value="summer">{t("playerDashboard.tabs.summerLeagues")}</TabsTrigger>
               </TabsList>
 
               {/* Team Matches */}
@@ -706,7 +713,7 @@ export default function PlayerDashboard() {
                   <CardHeader>
                     <CardTitle className="flex items-center">
                       <Trophy className="mr-2 h-5 w-5" />
-                      Your Team's Matches
+                      {t("playerDashboard.matches.title")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -718,7 +725,7 @@ export default function PlayerDashboard() {
                     ) : matches.length === 0 ? (
                       <div className="text-center py-8">
                         <Volleyball className="mx-auto h-12 w-12 text-gray-400" />
-                        <p className="mt-2 text-gray-600">No matches found for your team</p>
+                        <p className="mt-2 text-gray-600">{t("playerDashboard.matches.empty")}</p>
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -743,7 +750,7 @@ export default function PlayerDashboard() {
                                 </div>
                                 {match.setResults && (
                                   <div className="mt-2 text-sm text-gray-600">
-                                    <span className="font-medium">Set scores:</span> {match.setResults}
+                                    <span className="font-medium">{t("playerDashboard.matches.setScores")}</span> {match.setResults}
                                   </div>
                                 )}
                               </div>
@@ -792,8 +799,8 @@ export default function PlayerDashboard() {
                     ) : trainingSessions.length === 0 ? (
                       <div className="text-center py-8">
                         <Users className="mx-auto h-12 w-12 text-gray-400" />
-                        <p className="mt-2 text-gray-600">No training sessions scheduled</p>
-                        <p className="text-sm text-gray-500">Check back later or organize your own session!</p>
+                        <p className="mt-2 text-gray-600">{t("playerDashboard.training.empty")}</p>
+                        <p className="text-sm text-gray-500">{t("playerDashboard.training.emptyHint")}</p>
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -854,7 +861,7 @@ export default function PlayerDashboard() {
                   <CardHeader>
                     <CardTitle className="flex items-center">
                       <Users className="mr-2 h-5 w-5" />
-                      Your Teammates
+                      {t("playerDashboard.tabs.teammates")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -866,7 +873,7 @@ export default function PlayerDashboard() {
                     ) : teammates.length === 0 ? (
                       <div className="text-center py-8">
                         <Users className="mx-auto h-12 w-12 text-gray-400" />
-                        <p className="mt-2 text-gray-600">No teammates found</p>
+                        <p className="mt-2 text-gray-600">{t("playerDashboard.teammates.empty")}</p>
                         <p className="text-sm text-gray-500">You're the only player in this team or teammates haven't been added yet</p>
                       </div>
                     ) : (
@@ -913,7 +920,7 @@ export default function PlayerDashboard() {
                                   variant={teammate.isActive ? 'default' : 'secondary'}
                                   className="mb-2"
                                 >
-                                  {teammate.isActive ? 'Active' : 'Inactive'}
+                                  {teammate.isActive ? t("common.active") : t("common.inactive")}
                                 </Badge>
                               </div>
                             </div>
@@ -931,7 +938,7 @@ export default function PlayerDashboard() {
                   <CardHeader>
                     <CardTitle className="flex items-center">
                       <Mail className="mr-2 h-5 w-5" />
-                      Training Invitations
+                      {t("playerDashboard.tabs.invitations")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>

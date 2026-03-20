@@ -1,22 +1,24 @@
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Volleyball, 
-  Trophy, 
-  Users, 
-  TrendingUp, 
-  Target, 
+import LanguageSwitcher from "@/components/ui/language-switcher";
+import {
+  Volleyball,
+  Trophy,
+  Users,
+  TrendingUp,
+  Target,
   Star,
   ArrowRight,
   CheckCircle,
   BarChart3,
   Award,
-  Calendar,
-  MapPin
 } from "lucide-react";
 
 export default function Landing() {
+  const { t } = useTranslation();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
       {/* Header */}
@@ -25,14 +27,15 @@ export default function Landing() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
               <Volleyball className="h-8 w-8 text-blue-600" />
-              <span className="text-xl font-bold text-gray-900">VolleyStats Pro</span>
+              <span className="text-xl font-bold text-gray-900">{t("landing.brand")}</span>
             </div>
             <div className="flex items-center space-x-4">
+              <LanguageSwitcher />
               <Button variant="ghost" onClick={() => window.location.href = '/player-login'}>
-                Player Login
+                {t("nav.playerLogin")}
               </Button>
               <Button onClick={() => window.location.href = '/player-register'}>
-                Join Now
+                {t("nav.joinNow")}
               </Button>
             </div>
           </div>
@@ -45,23 +48,22 @@ export default function Landing() {
           <div className="text-center">
             <Badge variant="secondary" className="mb-4">
               <Star className="h-4 w-4 mr-1" />
-              Trusted by 200+ Teams Across Germany
+              {t("landing.hero.badge")}
             </Badge>
             <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-              The Complete
-              <span className="text-blue-600 block">Volleyball Analytics Platform</span>
+              {t("landing.hero.headline1")}
+              <span className="text-blue-600 block">{t("landing.hero.headline2")}</span>
             </h1>
             <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-              Comprehensive player tracking, team analytics, and performance insights for volleyball athletes, 
-              coaches, and clubs across all German leagues.
+              {t("landing.hero.description")}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" onClick={() => window.location.href = '/player-register'}>
-                Start Your Journey
+                {t("landing.hero.ctaPrimary")}
                 <ArrowRight className="h-5 w-5 ml-2" />
               </Button>
               <Button size="lg" variant="outline">
-                View Live Demo
+                {t("landing.hero.ctaSecondary")}
               </Button>
             </div>
           </div>
@@ -73,11 +75,10 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Everything You Need to Excel
+              {t("landing.features.title")}
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              From individual player development to team strategy optimization, 
-              we provide the tools that matter most.
+              {t("landing.features.subtitle")}
             </p>
           </div>
 
@@ -85,25 +86,17 @@ export default function Landing() {
             <Card className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <BarChart3 className="h-12 w-12 text-blue-600 mb-4" />
-                <CardTitle>Advanced Analytics</CardTitle>
-                <CardDescription>
-                  Deep performance insights with real-time statistics from live matches across all German leagues.
-                </CardDescription>
+                <CardTitle>{t("landing.features.analytics.title")}</CardTitle>
+                <CardDescription>{t("landing.features.analytics.description")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
-                  <li className="flex items-center text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                    Match-by-match tracking
-                  </li>
-                  <li className="flex items-center text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                    Team performance metrics
-                  </li>
-                  <li className="flex items-center text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                    League standings & trends
-                  </li>
+                  {(["item1", "item2", "item3"] as const).map((item) => (
+                    <li key={item} className="flex items-center text-sm">
+                      <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                      {t(`landing.features.analytics.${item}`)}
+                    </li>
+                  ))}
                 </ul>
               </CardContent>
             </Card>
@@ -111,25 +104,17 @@ export default function Landing() {
             <Card className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <Users className="h-12 w-12 text-green-600 mb-4" />
-                <CardTitle>Player Development</CardTitle>
-                <CardDescription>
-                  Personal dashboards and verified accounts for athletes to track their volleyball journey.
-                </CardDescription>
+                <CardTitle>{t("landing.features.playerDev.title")}</CardTitle>
+                <CardDescription>{t("landing.features.playerDev.description")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
-                  <li className="flex items-center text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                    SAMS player verification
-                  </li>
-                  <li className="flex items-center text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                    Training session coordination
-                  </li>
-                  <li className="flex items-center text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                    Teammate networking
-                  </li>
+                  {(["item1", "item2", "item3"] as const).map((item) => (
+                    <li key={item} className="flex items-center text-sm">
+                      <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                      {t(`landing.features.playerDev.${item}`)}
+                    </li>
+                  ))}
                 </ul>
               </CardContent>
             </Card>
@@ -137,25 +122,17 @@ export default function Landing() {
             <Card className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <Trophy className="h-12 w-12 text-yellow-600 mb-4" />
-                <CardTitle>Team Management</CardTitle>
-                <CardDescription>
-                  Comprehensive tools for coaches and club representatives to manage teams and analyze performance.
-                </CardDescription>
+                <CardTitle>{t("landing.features.teamMgmt.title")}</CardTitle>
+                <CardDescription>{t("landing.features.teamMgmt.description")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
-                  <li className="flex items-center text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                    Roster management
-                  </li>
-                  <li className="flex items-center text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                    Performance highlights
-                  </li>
-                  <li className="flex items-center text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                    Strategic insights
-                  </li>
+                  {(["item1", "item2", "item3"] as const).map((item) => (
+                    <li key={item} className="flex items-center text-sm">
+                      <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                      {t(`landing.features.teamMgmt.${item}`)}
+                    </li>
+                  ))}
                 </ul>
               </CardContent>
             </Card>
@@ -168,10 +145,10 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Built for the Volleyball Community
+              {t("landing.audience.title")}
             </h2>
             <p className="text-lg text-gray-600">
-              Whether you're just starting or competing at the highest level, we have solutions for you.
+              {t("landing.audience.subtitle")}
             </p>
           </div>
 
@@ -179,14 +156,12 @@ export default function Landing() {
             <Card className="text-center">
               <CardHeader>
                 <Target className="h-10 w-10 text-blue-600 mx-auto mb-3" />
-                <CardTitle className="text-lg">Players</CardTitle>
+                <CardTitle className="text-lg">{t("landing.audience.players.title")}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-gray-600">
-                  Track your progress, connect with teammates, and showcase your volleyball journey.
-                </p>
+                <p className="text-sm text-gray-600">{t("landing.audience.players.description")}</p>
                 <Button className="w-full mt-4" variant="outline" size="sm">
-                  Register as Player
+                  {t("landing.audience.players.cta")}
                 </Button>
               </CardContent>
             </Card>
@@ -194,14 +169,12 @@ export default function Landing() {
             <Card className="text-center">
               <CardHeader>
                 <Award className="h-10 w-10 text-green-600 mx-auto mb-3" />
-                <CardTitle className="text-lg">Trainers</CardTitle>
+                <CardTitle className="text-lg">{t("landing.audience.trainers.title")}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-gray-600">
-                  Analyze team performance, organize training sessions, and develop winning strategies.
-                </p>
+                <p className="text-sm text-gray-600">{t("landing.audience.trainers.description")}</p>
                 <Button className="w-full mt-4" variant="outline" size="sm">
-                  Join as Trainer
+                  {t("landing.audience.trainers.cta")}
                 </Button>
               </CardContent>
             </Card>
@@ -209,14 +182,12 @@ export default function Landing() {
             <Card className="text-center">
               <CardHeader>
                 <Users className="h-10 w-10 text-purple-600 mx-auto mb-3" />
-                <CardTitle className="text-lg">Clubs</CardTitle>
+                <CardTitle className="text-lg">{t("landing.audience.clubs.title")}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-gray-600">
-                  Manage multiple teams, track club-wide statistics, and enhance member engagement.
-                </p>
+                <p className="text-sm text-gray-600">{t("landing.audience.clubs.description")}</p>
                 <Button className="w-full mt-4" variant="outline" size="sm">
-                  Register Club
+                  {t("landing.audience.clubs.cta")}
                 </Button>
               </CardContent>
             </Card>
@@ -224,14 +195,12 @@ export default function Landing() {
             <Card className="text-center border-2 border-yellow-200 bg-yellow-50">
               <CardHeader>
                 <TrendingUp className="h-10 w-10 text-yellow-600 mx-auto mb-3" />
-                <CardTitle className="text-lg">Sponsors</CardTitle>
+                <CardTitle className="text-lg">{t("landing.audience.sponsors.title")}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-gray-600">
-                  Reach the volleyball community with targeted advertising and brand partnerships.
-                </p>
+                <p className="text-sm text-gray-600">{t("landing.audience.sponsors.description")}</p>
                 <Button className="w-full mt-4" size="sm">
-                  Advertise With Us
+                  {t("landing.audience.sponsors.cta")}
                 </Button>
               </CardContent>
             </Card>
@@ -245,19 +214,19 @@ export default function Landing() {
           <div className="grid md:grid-cols-4 gap-8 text-center">
             <div>
               <div className="text-4xl font-bold mb-2">240+</div>
-              <div className="text-blue-200">Active Players</div>
+              <div className="text-blue-200">{t("landing.stats.activePlayers")}</div>
             </div>
             <div>
               <div className="text-4xl font-bold mb-2">16</div>
-              <div className="text-blue-200">Teams Tracked</div>
+              <div className="text-blue-200">{t("landing.stats.teamsTracked")}</div>
             </div>
             <div>
               <div className="text-4xl font-bold mb-2">2</div>
-              <div className="text-blue-200">German Leagues</div>
+              <div className="text-blue-200">{t("landing.stats.germanLeagues")}</div>
             </div>
             <div>
               <div className="text-4xl font-bold mb-2">500+</div>
-              <div className="text-blue-200">Matches Analyzed</div>
+              <div className="text-blue-200">{t("landing.stats.matchesAnalyzed")}</div>
             </div>
           </div>
         </div>
@@ -267,18 +236,17 @@ export default function Landing() {
       <section className="py-20 bg-white">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            Ready to Elevate Your Game?
+            {t("landing.cta.title")}
           </h2>
           <p className="text-lg text-gray-600 mb-8">
-            Join the growing community of volleyball athletes and teams using VolleyStats Pro 
-            to reach their full potential.
+            {t("landing.cta.description")}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" onClick={() => window.location.href = '/player-register'}>
-              Get Started Free
+              {t("landing.cta.primary")}
             </Button>
             <Button size="lg" variant="outline">
-              Schedule Demo
+              {t("landing.cta.secondary")}
             </Button>
           </div>
         </div>
@@ -291,42 +259,40 @@ export default function Landing() {
             <div>
               <div className="flex items-center space-x-3 mb-4">
                 <Volleyball className="h-6 w-6" />
-                <span className="font-bold">VolleyStats Pro</span>
+                <span className="font-bold">{t("landing.brand")}</span>
               </div>
-              <p className="text-gray-400 text-sm">
-                The complete volleyball analytics platform for German leagues.
-              </p>
+              <p className="text-gray-400 text-sm">{t("landing.footer.tagline")}</p>
             </div>
             <div>
-              <h3 className="font-semibold mb-4">Players</h3>
+              <h3 className="font-semibold mb-4">{t("landing.footer.playersSection")}</h3>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li>Register Account</li>
-                <li>Player Dashboard</li>
-                <li>Team Finder</li>
-                <li>Training Sessions</li>
+                <li>{t("landing.footer.playersLinks.register")}</li>
+                <li>{t("landing.footer.playersLinks.dashboard")}</li>
+                <li>{t("landing.footer.playersLinks.teamFinder")}</li>
+                <li>{t("landing.footer.playersLinks.training")}</li>
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold mb-4">Teams & Clubs</h3>
+              <h3 className="font-semibold mb-4">{t("landing.footer.teamsSection")}</h3>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li>Team Management</li>
-                <li>Performance Analytics</li>
-                <li>Player Recruitment</li>
-                <li>Match Analysis</li>
+                <li>{t("landing.footer.teamsLinks.management")}</li>
+                <li>{t("landing.footer.teamsLinks.analytics")}</li>
+                <li>{t("landing.footer.teamsLinks.recruitment")}</li>
+                <li>{t("landing.footer.teamsLinks.analysis")}</li>
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold mb-4">Sponsors</h3>
+              <h3 className="font-semibold mb-4">{t("landing.footer.sponsorsSection")}</h3>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li>Advertising Options</li>
-                <li>Brand Partnerships</li>
-                <li>Community Reach</li>
-                <li>Contact Sales</li>
+                <li>{t("landing.footer.sponsorsLinks.advertising")}</li>
+                <li>{t("landing.footer.sponsorsLinks.partnerships")}</li>
+                <li>{t("landing.footer.sponsorsLinks.reach")}</li>
+                <li>{t("landing.footer.sponsorsLinks.contact")}</li>
               </ul>
             </div>
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
-            <p>&copy; 2024 VolleyStats Pro. All rights reserved.</p>
+            <p>{t("landing.footer.copyright")}</p>
           </div>
         </div>
       </footer>

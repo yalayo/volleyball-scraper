@@ -17,6 +17,7 @@ interface AdminLoginProps {
   user?: any;
   showSignUp?: () => void;
   onGoHome?: () => void;
+  serverError?: string;
 }
 
 export default function AdminLogin(props: AdminLoginProps) {
@@ -79,9 +80,9 @@ export default function AdminLogin(props: AdminLoginProps) {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                {error && (
+                {(error || props.serverError) && (
                   <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
+                    <AlertDescription>{error || props.serverError}</AlertDescription>
                   </Alert>
                 )}
 

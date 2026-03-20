@@ -15,3 +15,8 @@
  ::auth-token
  (fn [db _]
    (get-in db [:user :token])))
+
+(re-frame/reg-sub
+ ::sign-in-error
+ (fn [db _]
+   (get-in db [:user :sign-in :error])))

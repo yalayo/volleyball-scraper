@@ -161,6 +161,7 @@ export default function PlayerRegister(props: PlayerRegisterProps) {
             </CardDescription>
           </CardHeader>
 
+
           <CardContent>
             {serverError && (
               <Alert variant="destructive" className="mb-4">
@@ -324,6 +325,24 @@ export default function PlayerRegister(props: PlayerRegisterProps) {
             )}
           </CardContent>
         </Card>
+        <div className="mt-4 text-center space-y-2">
+          <p className="text-sm text-gray-600">
+            {t("playerRegister.alreadyHaveAccount")}{" "}
+            <button
+              onClick={props.showSignIn}
+              className="text-blue-600 hover:text-blue-500 font-medium"
+            >
+              {t("common.signIn")}
+            </button>
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={props.onGoHome}
+          >
+            {t("nav.backToHome")}
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -166,7 +166,8 @@ const en = {
     "errorEmail": "Email is required",
     "errorPassword": "Password is required",
     "errorPasswordMatch": "Passwords do not match",
-    "errorPasswordLength": "Password must be at least 6 characters long"
+    "errorPasswordLength": "Password must be at least 6 characters long",
+    "alreadyHaveAccount": "Already have an account?"
   },
   "notFound": {
     "title": "404 Page Not Found",

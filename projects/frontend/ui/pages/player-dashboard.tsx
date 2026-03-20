@@ -468,7 +468,11 @@ interface TrainingSession {
   isJoined: boolean;
 }
 
-export default function PlayerDashboard() {
+interface PlayerDashboardProps {
+  onLogout?: () => void;
+}
+
+export default function PlayerDashboard(props: PlayerDashboardProps) {
   const [player, setPlayer] = useState<PlayerAccount | null>(null);
   const queryClient = useQueryClient();
 
@@ -481,7 +485,11 @@ export default function PlayerDashboard() {
 
   const handleLogout = () => {
     localStorage.removeItem('playerSession');
-    window.location.href = '/player-login';
+    if (props.onLogout) {
+      props.onLogout();
+    } else {
+      window.location.href = '/player-login';
+    }
   };
 
   // Fetch matches for the player's team

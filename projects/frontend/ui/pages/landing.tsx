@@ -19,6 +19,7 @@ import {
 
 interface LandingProps {
   onSignIn?: () => void;
+  onPlayerSignIn?: () => void;
   onSignUp?: () => void;
   onEnter?: () => void;
 }
@@ -38,6 +39,9 @@ export default function Landing(props: LandingProps) {
             </div>
             <div className="flex items-center space-x-4">
               <LanguageSwitcher />
+              <Button variant="ghost" size="sm" onClick={props.onPlayerSignIn}>
+                {t("nav.playerLogin")}
+              </Button>
               <Button variant="ghost" size="sm" onClick={props.onSignIn}>
                 {t("nav.adminLogin")}
               </Button>
@@ -167,7 +171,7 @@ export default function Landing(props: LandingProps) {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-gray-600">{t("landing.audience.players.description")}</p>
-                <Button className="w-full mt-4" variant="outline" size="sm">
+                <Button className="w-full mt-4" variant="outline" size="sm" onClick={props.onSignUp}>
                   {t("landing.audience.players.cta")}
                 </Button>
               </CardContent>

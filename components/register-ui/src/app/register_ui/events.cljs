@@ -46,7 +46,7 @@
  [local-storage-interceptor]
  (fn [{:keys [db]} _]
    (analytics/event "sign_in_attempt" {})
-   {:db (assoc-in db [:ui :active-section] "auth")}))
+   {:db (assoc-in db [:ui :active-section] "player-login")}))
 
 (re-frame/reg-event-db
  ::go-home

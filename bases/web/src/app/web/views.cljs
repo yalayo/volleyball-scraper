@@ -1,18 +1,8 @@
 (ns app.web.views
-  (:require [reagent.core  :as r]
-            [re-frame.core :as re-frame]
-            [app.web.subs :as subs]
-            [app.main-ui.views :as main]))
-
-#_(def home (r/adapt-react-class home-js))
+  (:require [app.main-ui.views :as main]
+            ["@tanstack/react-query" :refer [QueryClientProvider]]
+            ["/lib/queryClient" :refer [queryClient]]))
 
 (defn home-component []
-  [:<>
-   (main/component)])
-
-#_(defn platform-component []
-  (let [user-loged-in? @(re-frame/subscribe [::subs/logged-in])]
-    [:<>
-     (if user-loged-in?
-       (auth/component)
-       (auth/component))]))
+  [:> QueryClientProvider {:client queryClient}
+   [main/component]])

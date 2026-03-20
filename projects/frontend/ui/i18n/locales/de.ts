@@ -166,7 +166,8 @@ const de = {
     "errorEmail": "E-Mail ist erforderlich",
     "errorPassword": "Passwort ist erforderlich",
     "errorPasswordMatch": "Passwörter stimmen nicht überein",
-    "errorPasswordLength": "Das Passwort muss mindestens 6 Zeichen lang sein"
+    "errorPasswordLength": "Das Passwort muss mindestens 6 Zeichen lang sein",
+    "alreadyHaveAccount": "Haben Sie bereits ein Konto?"
   },
   "notFound": {
     "title": "404 Seite nicht gefunden",

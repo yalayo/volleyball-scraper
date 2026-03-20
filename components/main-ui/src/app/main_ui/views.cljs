@@ -11,13 +11,17 @@
             [app.auth-ui.config :as api-config]
             ;; React page imports
             ["/i18n/config"]
-            ["/pages/landing$default"      :as landing-js]
-            ["/pages/dashboard$default"    :as dashboard-js]
-            ["/pages/not-found$default"    :as not-found-js]))
+            ["/pages/landing$default"          :as landing-js]
+            ["/pages/dashboard$default"        :as dashboard-js]
+            ["/pages/not-found$default"        :as not-found-js]
+            ["/pages/player-login$default"     :as player-login-js]
+            ["/pages/player-dashboard$default" :as player-dashboard-js]))
 
-(def landing   (r/adapt-react-class landing-js))
-(def dashboard (r/adapt-react-class dashboard-js))
-(def not-found (r/adapt-react-class not-found-js))
+(def landing          (r/adapt-react-class landing-js))
+(def dashboard        (r/adapt-react-class dashboard-js))
+(def not-found        (r/adapt-react-class not-found-js))
+(def player-login     (r/adapt-react-class player-login-js))
+(def player-dashboard (r/adapt-react-class player-dashboard-js))
 
 (defn dashboard-component []
   (re-frame/dispatch [::vb-events/load-data])
@@ -43,14 +47,27 @@
         :onRefresh   #(re-frame/dispatch [::vb-events/load-data])
         :onLogout    #(re-frame/dispatch [::events/sign-out])}])))
 
+(defn player-login-component []
+  [player-login
+   {:onLoginSuccess #(re-frame/dispatch [::events/change-active-section "player-dashboard"])
+    :onRegister     #(re-frame/dispatch [::events/change-active-section "register"])
+    :onGoHome       #(re-frame/dispatch [::events/change-active-section "home"])}])
+
+(defn player-dashboard-component []
+  [player-dashboard
+   {:onLogout #(re-frame/dispatch [::events/change-active-section "player-login"])}])
+
 (defn component []
   (let [active @(re-frame/subscribe [::subs/active-section])]
     (case active
-      "auth"      [auth/component {:id "auth"}]
-      "register"  [register/component {:id "register"}]
-      "dashboard" [dashboard-component]
+      "auth"             [auth/component {:id "auth"}]
+      "register"         [register/component {:id "register"}]
+      "dashboard"        [dashboard-component]
+      "player-login"     [player-login-component]
+      "player-dashboard" [player-dashboard-component]
       ;; default: landing page
       [landing
-       {:onSignIn  #(re-frame/dispatch [::events/change-active-section "auth"])
-        :onSignUp  #(re-frame/dispatch [::events/change-active-section "register"])
-        :onEnter   #(re-frame/dispatch [::events/change-active-section "dashboard"])}])))
+       {:onSignIn       #(re-frame/dispatch [::events/change-active-section "auth"])
+        :onPlayerSignIn #(re-frame/dispatch [::events/change-active-section "player-login"])
+        :onSignUp       #(re-frame/dispatch [::events/change-active-section "register"])
+        :onEnter        #(re-frame/dispatch [::events/change-active-section "dashboard"])}])))

@@ -10,7 +10,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Loader2, AlertCircle, Mail, Lock, ArrowRight } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
 import LanguageSwitcher from "@/components/ui/language-switcher";
 
 interface LoginResponse {
@@ -26,6 +25,12 @@ interface LoginResponse {
   isVerified: boolean;
 }
 
+interface PlayerLoginProps {
+  onLoginSuccess?: () => void;
+  onRegister?: () => void;
+  onGoHome?: () => void;
+}
+
 const schema = z.object({
   email: z.string().min(1, "Email is required").email("Invalid email address"),
   password: z.string().min(1, "Password is required"),
@@ -33,9 +38,8 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-export default function PlayerLogin() {
+export default function PlayerLogin(props: PlayerLoginProps) {
   const { t } = useTranslation();
-  const [, setLocation] = useLocation();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -58,7 +62,11 @@ export default function PlayerLogin() {
     onSuccess: (data) => {
       if (data.message === "Login successful") {
         localStorage.setItem("playerSession", JSON.stringify(data.account));
-        setLocation("/player-dashboard");
+        if (props.onLoginSuccess) {
+          props.onLoginSuccess();
+        } else {
+          window.location.href = "/player-dashboard";
+        }
       }
     },
   });
@@ -153,16 +161,25 @@ export default function PlayerLogin() {
               </form>
             </Form>
 
-            <div className="mt-6 text-center">
+            <div className="mt-6 text-center space-y-2">
               <p className="text-sm text-gray-600">
                 {t("playerLogin.noAccount")}{" "}
                 <button
-                  onClick={() => setLocation("/player-register")}
+                  onClick={props.onRegister ?? (() => { window.location.href = "/player-register"; })}
                   className="text-blue-600 hover:text-blue-500 font-medium"
                 >
                   {t("playerLogin.registerLink")}
                 </button>
               </p>
+              <div className="pt-2 border-t">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={props.onGoHome ?? (() => { window.location.href = "/"; })}
+                >
+                  {t("nav.backToHome")}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

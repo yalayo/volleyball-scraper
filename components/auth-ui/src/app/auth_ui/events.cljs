@@ -12,7 +12,9 @@
 (re-frame/reg-event-fx
  ::sign-in
  (fn [{:keys [db]} [_ form-data]]
-   {:db (assoc-in db [:user :sign-in :loading?] true)
+   {:db (-> db
+            (assoc-in [:user :sign-in :loading?] true)
+            (assoc-in [:user :sign-in :error] nil))
     :http-xhrio {:method          :post
                  :uri             (str (config/get-api-url) "/api/admin/login")
                  :params          form-data
@@ -41,7 +43,12 @@
  ::sign-in-error
  (fn [{:keys [db]} [_ error]]
    (js/console.error "Signin failed:" error)
-   {:db (assoc-in db [:user :sign-in :loading?] false)}))
+   (let [msg (or (get-in error [:response :message])
+                 (get-in error [:parse-error :original-text])
+                 "Login failed. Please check your credentials.")]
+     {:db (-> db
+              (assoc-in [:user :sign-in :loading?] false)
+              (assoc-in [:user :sign-in :error] msg))})))
 
 (re-frame/reg-event-fx
  ::show-sign-up

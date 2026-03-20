@@ -1,4 +1,4 @@
-{
+const de = {
   "common": {
     "loading": "Laden...",
     "signIn": "Anmelden",
@@ -9,19 +9,11 @@
     "password": "Passwort",
     "firstName": "Vorname",
     "lastName": "Nachname",
-    "name": "Name",
-    "status": "Status",
-    "actions": "Aktionen",
-    "view": "Ansehen",
-    "search": "Suchen",
     "active": "Aktiv",
-    "inactive": "Inaktiv",
-    "success": "Erfolgreich",
-    "error": "Fehler",
-    "unknown": "Unbekannt",
-    "noResults": "Keine Ergebnisse gefunden"
+    "inactive": "Inaktiv"
   },
   "nav": {
+    "adminLogin": "Admin-Login",
     "playerLogin": "Spieler-Login",
     "joinNow": "Jetzt beitreten",
     "backToHome": "← Zurück zur Startseite",
@@ -232,66 +224,7 @@
     "statusRunning": "Läuft",
     "statusSuccess": "Erfolgreich",
     "statusError": "Fehler"
-  },
-  "playerDashboard": {
-    "title": "Spieler-Dashboard",
-    "welcome": "Willkommen zurück, {{name}}",
-    "verifiedMessage": "Ihr Konto ist verifiziert! Sie haben vollen Zugriff auf Team-Funktionen und Trainingseinheiten.",
-    "pendingTitle": "Konto-Verifizierung ausstehend",
-    "pendingDescription": "Ihr Spielerkonto wird derzeit verifiziert.",
-    "pendingVerifiers": "Drei oder mehr bereits verifizierte Teamkollegen",
-    "pendingTrainer": "Ihr Teamtrainer oder -coach",
-    "pendingAdmin": "Ein Systemadministrator",
-    "pendingOnceVerified": "Nach der Verifizierung haben Sie vollen Zugriff auf die Spiele Ihres Teams, die Organisation von Trainingseinheiten und die Vernetzung mit Teamkollegen.",
-    "yourInfo": "Ihre Spielerinformationen:",
-    "name": "Name:",
-    "samsId": "SAMS-Spieler-ID:",
-    "teamInfo": "Ihre Teaminformationen",
-    "player": "Spieler:",
-    "teamLabel": "Team:",
-    "location": "Standort:",
-    "teamAccess": "Team-Zugang:",
-    "fullAccess": "Voller Zugang",
-    "tabs": {
-      "matches": "Team-Spiele",
-      "training": "Trainingseinheiten",
-      "teammates": "Teamkollegen",
-      "invitations": "Trainingseinladungen",
-      "summerLeagues": "Sommerligen"
-    },
-    "matches": {
-      "title": "Spiele Ihres Teams",
-      "empty": "Keine Spiele für Ihr Team gefunden",
-      "setScores": "Satz-Ergebnisse:"
-    },
-    "training": {
-      "empty": "Keine Trainingseinheiten geplant",
-      "emptyHint": "Schauen Sie später wieder vorbei oder organisieren Sie Ihre eigene Einheit!"
-    },
-    "teammates": {
-      "empty": "Keine Teamkollegen gefunden",
-      "position": "Position:",
-      "jersey": "Trikotnr.",
-      "samsId": "SAMS-ID:"
-    },
-    "invitations": {
-      "empty": "Keine Trainingseinladungen",
-      "emptyHint": "Schauen Sie später für Trainingsmöglichkeiten vorbei!",
-      "invitedBy": "Eingeladen von {{name}}",
-      "accept": "Annehmen",
-      "decline": "Ablehnen",
-      "loading": "Einladungen werden geladen..."
-    },
-    "summerLeagues": {
-      "createLeague": "Sommerliga erstellen",
-      "createTeam": "Team erstellen",
-      "myTeams": "Meine Teams",
-      "available": "Verfügbare Sommerligen",
-      "empty": "Keine Sommerligen verfügbar",
-      "emptyHint": "Erstellen Sie die erste Sommerliga!",
-      "season": "Saison:",
-      "open": "Offen",
-      "closed": "Geschlossen"
-    }
   }
-}
+};
+
+export default de;

@@ -10,6 +10,7 @@
             [app.volleyball-ui.events :as vb-events]
             [app.auth-ui.config :as api-config]
             ;; React page imports
+            ["/i18n/config"]
             ["/pages/landing$default"      :as landing-js]
             ["/pages/dashboard$default"    :as dashboard-js]
             ["/pages/not-found$default"    :as not-found-js]))

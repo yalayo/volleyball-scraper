@@ -1,4 +1,4 @@
-{
+const en = {
   "common": {
     "loading": "Loading...",
     "signIn": "Sign In",
@@ -9,19 +9,11 @@
     "password": "Password",
     "firstName": "First Name",
     "lastName": "Last Name",
-    "name": "Name",
-    "status": "Status",
-    "actions": "Actions",
-    "view": "View",
-    "search": "Search",
     "active": "Active",
-    "inactive": "Inactive",
-    "success": "Success",
-    "error": "Error",
-    "unknown": "Unknown",
-    "noResults": "No results found"
+    "inactive": "Inactive"
   },
   "nav": {
+    "adminLogin": "Admin Login",
     "playerLogin": "Player Login",
     "joinNow": "Join Now",
     "backToHome": "← Back to Home",
@@ -232,66 +224,7 @@
     "statusRunning": "Running",
     "statusSuccess": "Success",
     "statusError": "Error"
-  },
-  "playerDashboard": {
-    "title": "Player Dashboard",
-    "welcome": "Welcome back, {{name}}",
-    "verifiedMessage": "Your account is verified! You have full access to team features and training sessions.",
-    "pendingTitle": "Account Verification Pending",
-    "pendingDescription": "Your player account is currently pending verification.",
-    "pendingVerifiers": "Three or more teammates who are already verified",
-    "pendingTrainer": "Your team trainer or coach",
-    "pendingAdmin": "A system administrator",
-    "pendingOnceVerified": "Once verified, you'll have full access to view your team's matches, organize training sessions, and connect with teammates.",
-    "yourInfo": "Your Player Information:",
-    "name": "Name:",
-    "samsId": "SAMS Player ID:",
-    "teamInfo": "Your Team Information",
-    "player": "Player:",
-    "teamLabel": "Team:",
-    "location": "Location:",
-    "teamAccess": "Team Access:",
-    "fullAccess": "Full Access",
-    "tabs": {
-      "matches": "Team Matches",
-      "training": "Training Sessions",
-      "teammates": "Teammates",
-      "invitations": "Training Invitations",
-      "summerLeagues": "Summer Leagues"
-    },
-    "matches": {
-      "title": "Your Team's Matches",
-      "empty": "No matches found for your team",
-      "setScores": "Set scores:"
-    },
-    "training": {
-      "empty": "No training sessions scheduled",
-      "emptyHint": "Check back later or organize your own session!"
-    },
-    "teammates": {
-      "empty": "No teammates found",
-      "position": "Position:",
-      "jersey": "Jersey #",
-      "samsId": "SAMS ID:"
-    },
-    "invitations": {
-      "empty": "No training invitations",
-      "emptyHint": "Check back later for training opportunities!",
-      "invitedBy": "Invited by {{name}}",
-      "accept": "Accept",
-      "decline": "Decline",
-      "loading": "Loading invitations..."
-    },
-    "summerLeagues": {
-      "createLeague": "Create Summer League",
-      "createTeam": "Create Team",
-      "myTeams": "My Teams",
-      "available": "Available Summer Leagues",
-      "empty": "No summer leagues available",
-      "emptyHint": "Create the first summer league!",
-      "season": "Season:",
-      "open": "Open",
-      "closed": "Closed"
-    }
   }
-}
+};
+
+export default en;

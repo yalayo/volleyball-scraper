@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,24 +9,16 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Loader2, CheckCircle, AlertCircle, User, Mail, Lock, IdCard } from "lucide-react";
+import LanguageSwitcher from "@/components/ui/language-switcher";
 
-const validateSchema = z.object({
-  samsPlayerId: z.string().min(1, "SAMS Player ID is required"),
-});
-
-const registerSchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  email: z.string().min(1, "Email is required").email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string().min(1, "Please confirm your password"),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords do not match",
-  path: ["confirmPassword"],
-});
-
-type ValidateValues = z.infer<typeof validateSchema>;
-type RegisterValues = z.infer<typeof registerSchema>;
+type ValidateValues = { samsPlayerId: string };
+type RegisterValues = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+};
 
 interface PlayerRegisterProps {
   onSubmit?: (data: any) => void;
@@ -36,9 +29,25 @@ interface PlayerRegisterProps {
 }
 
 export default function PlayerRegister(props: PlayerRegisterProps) {
+  const { t } = useTranslation();
   const [step, setStep] = useState<"validate" | "register" | "success">("validate");
   const [verifiedSamsId, setVerifiedSamsId] = useState("");
   const [serverError, setServerError] = useState("");
+
+  const validateSchema = z.object({
+    samsPlayerId: z.string().min(1, t("playerRegister.samsIdError")),
+  });
+
+  const registerSchema = z.object({
+    firstName: z.string().min(1, t("playerRegister.errorFirstName")),
+    lastName: z.string().min(1, t("playerRegister.errorLastName")),
+    email: z.string().min(1, t("playerRegister.errorEmail")).email(t("adminLogin.errorCredentials")),
+    password: z.string().min(6, t("playerRegister.errorPasswordLength")),
+    confirmPassword: z.string().min(1, t("playerRegister.errorPassword")),
+  }).refine((data) => data.password === data.confirmPassword, {
+    message: t("playerRegister.errorPasswordMatch"),
+    path: ["confirmPassword"],
+  });
 
   const validateForm = useForm<ValidateValues>({
     resolver: zodResolver(validateSchema),
@@ -65,10 +74,10 @@ export default function PlayerRegister(props: PlayerRegisterProps) {
         setVerifiedSamsId(body.samsPlayerId);
         setStep("register");
       } else {
-        setServerError(body.message || "Validation failed");
+        setServerError(body.message || t("playerRegister.samsIdError"));
       }
     } catch (err: any) {
-      setServerError(err.message || "Validation failed");
+      setServerError(err.message || t("playerRegister.samsIdError"));
     }
   };
 
@@ -94,218 +103,228 @@ export default function PlayerRegister(props: PlayerRegisterProps) {
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "Registration failed");
+        throw new Error(error.message || t("playerRegister.errorPassword"));
       }
       setStep("success");
     } catch (err: any) {
-      setServerError(err.message || "Registration failed");
+      setServerError(err.message || t("playerRegister.errorPassword"));
     }
   };
 
   if (step === "success") {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <CardTitle className="text-2xl font-bold text-green-700">Registration Successful!</CardTitle>
-            <CardDescription>Your volleyball player account has been created successfully.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Account Status: Pending Verification</strong>
-                <br />
-                Your account requires verification by 3 teammates or team management.
-              </AlertDescription>
-            </Alert>
-            <Button onClick={props.showSignIn ?? (() => {})} className="w-full">
-              Go to Login
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="w-full max-w-md">
+          <div className="flex justify-end mb-4">
+            <LanguageSwitcher />
+          </div>
+          <Card>
+            <CardHeader className="text-center">
+              <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+              <CardTitle className="text-2xl font-bold text-green-700">{t("playerRegister.successTitle")}</CardTitle>
+              <CardDescription>{t("playerRegister.successDescription")}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>{t("playerRegister.pendingVerificationTitle")}</strong>
+                  <br />
+                  {t("playerRegister.pendingVerificationText")}
+                </AlertDescription>
+              </Alert>
+              <Button onClick={props.showSignIn ?? (() => {})} className="w-full">
+                {t("playerRegister.goToLogin")}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center">
-            {step === "validate" ? "Volleyball Player Registration" : "Complete Your Registration"}
-          </CardTitle>
-          <CardDescription className="text-center">
-            {step === "validate"
-              ? "Enter your SAMS Player ID to verify your volleyball player status"
-              : "Create your account with the verified player ID"}
-          </CardDescription>
-        </CardHeader>
+      <div className="w-full max-w-md">
+        <div className="flex justify-end mb-4">
+          <LanguageSwitcher />
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold text-center">
+              {step === "validate" ? t("playerRegister.titleValidate") : t("playerRegister.titleRegister")}
+            </CardTitle>
+            <CardDescription className="text-center">
+              {step === "validate"
+                ? t("playerRegister.subtitleValidate")
+                : t("playerRegister.subtitleRegister")}
+            </CardDescription>
+          </CardHeader>
 
-        <CardContent>
-          {serverError && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{serverError}</AlertDescription>
-            </Alert>
-          )}
+          <CardContent>
+            {serverError && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{serverError}</AlertDescription>
+              </Alert>
+            )}
 
-          {step === "validate" ? (
-            <Form {...validateForm}>
-              <form onSubmit={validateForm.handleSubmit(onValidate)} className="space-y-4">
-                <FormField
-                  control={validateForm.control}
-                  name="samsPlayerId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>SAMS Player ID</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <IdCard className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                          <Input
-                            placeholder="Enter your SAMS Player ID (e.g., 75996241)"
-                            className="pl-10"
-                            disabled={validateForm.formState.isSubmitting}
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                      <p className="text-sm text-gray-500">
-                        This ID links your account to your official volleyball player record.
-                      </p>
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full" disabled={validateForm.formState.isSubmitting}>
-                  {validateForm.formState.isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Validating...
-                    </>
-                  ) : (
-                    "Validate Player ID"
-                  )}
-                </Button>
-              </form>
-            </Form>
-          ) : (
-            <Form {...registerForm}>
-              <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+            {step === "validate" ? (
+              <Form {...validateForm}>
+                <form onSubmit={validateForm.handleSubmit(onValidate)} className="space-y-4">
                   <FormField
-                    control={registerForm.control}
-                    name="firstName"
+                    control={validateForm.control}
+                    name="samsPlayerId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>First Name</FormLabel>
+                        <FormLabel>{t("playerRegister.samsIdLabel")}</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                            <Input placeholder="First name" className="pl-10" disabled={isPending} {...field} />
+                            <IdCard className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                            <Input
+                              placeholder={t("playerRegister.samsIdPlaceholder")}
+                              className="pl-10"
+                              disabled={validateForm.formState.isSubmitting}
+                              {...field}
+                            />
                           </div>
                         </FormControl>
                         <FormMessage />
+                        <p className="text-sm text-gray-500">
+                          {t("playerRegister.samsIdHint")}
+                        </p>
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={registerForm.control}
-                    name="lastName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Last Name</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                            <Input placeholder="Last name" className="pl-10" disabled={isPending} {...field} />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={registerForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                          <Input type="email" placeholder="your.email@example.com" className="pl-10" disabled={isPending} {...field} />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={registerForm.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                          <Input type="password" placeholder="Choose a password (min 6 chars)" className="pl-10" disabled={isPending} {...field} />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={registerForm.control}
-                  name="confirmPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Confirm Password</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                          <Input type="password" placeholder="Confirm your password" className="pl-10" disabled={isPending} {...field} />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <Alert>
-                  <CheckCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    SAMS Player ID <strong>{verifiedSamsId}</strong> verified successfully.
-                  </AlertDescription>
-                </Alert>
-
-                <div className="flex gap-2">
-                  <Button type="button" variant="outline" onClick={() => setStep("validate")} disabled={isPending} className="flex-1">
-                    Back
-                  </Button>
-                  <Button type="submit" className="flex-1" disabled={isPending}>
-                    {isPending ? (
+                  <Button type="submit" className="w-full" disabled={validateForm.formState.isSubmitting}>
+                    {validateForm.formState.isSubmitting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating...
+                        {t("playerRegister.validating")}
                       </>
                     ) : (
-                      "Create Account"
+                      t("playerRegister.validate")
                     )}
                   </Button>
-                </div>
-              </form>
-            </Form>
-          )}
-        </CardContent>
-      </Card>
+                </form>
+              </Form>
+            ) : (
+              <Form {...registerForm}>
+                <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={registerForm.control}
+                      name="firstName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("common.firstName")}</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                              <Input placeholder={t("playerRegister.firstNamePlaceholder")} className="pl-10" disabled={isPending} {...field} />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={registerForm.control}
+                      name="lastName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("common.lastName")}</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                              <Input placeholder={t("playerRegister.lastNamePlaceholder")} className="pl-10" disabled={isPending} {...field} />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={registerForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("common.email")}</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                            <Input type="email" placeholder={t("playerRegister.emailPlaceholder")} className="pl-10" disabled={isPending} {...field} />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={registerForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("playerRegister.passwordLabel")}</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                            <Input type="password" placeholder={t("playerRegister.passwordPlaceholder")} className="pl-10" disabled={isPending} {...field} />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={registerForm.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("playerRegister.confirmPasswordLabel")}</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                            <Input type="password" placeholder={t("playerRegister.confirmPasswordPlaceholder")} className="pl-10" disabled={isPending} {...field} />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <Alert>
+                    <CheckCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      {t("playerRegister.samsIdVerified", { id: verifiedSamsId })}
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" onClick={() => setStep("validate")} disabled={isPending} className="flex-1">
+                      {t("common.back")}
+                    </Button>
+                    <Button type="submit" className="flex-1" disabled={isPending}>
+                      {isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          {t("playerRegister.creating")}
+                        </>
+                      ) : (
+                        t("playerRegister.createAccount")
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

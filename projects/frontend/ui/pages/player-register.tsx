@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Loader2, CheckCircle, AlertCircle, User, Mail, Lock, IdCard } from "lucide-react";
+import { getApiBaseUrl } from "@/lib/api-url";
 import LanguageSwitcher from "@/components/ui/language-switcher";
 
 type ValidateValues = { samsPlayerId: string };
@@ -64,7 +65,7 @@ export default function PlayerRegister(props: PlayerRegisterProps) {
   const onValidate = async (data: ValidateValues) => {
     setServerError("");
     try {
-      const response = await fetch("/api/player-accounts/validate-sams-id", {
+      const response = await fetch(`${getApiBaseUrl()}/api/player-accounts/validate-sams-id`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ samsPlayerId: data.samsPlayerId.trim() }),
@@ -90,7 +91,7 @@ export default function PlayerRegister(props: PlayerRegisterProps) {
     }
 
     try {
-      const response = await fetch("/api/player-accounts/register", {
+      const response = await fetch(`${getApiBaseUrl()}/api/player-accounts/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

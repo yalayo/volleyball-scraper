@@ -12,6 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Users, MapPin, Calendar, Trophy } from "lucide-react";
+import { getApiBaseUrl } from "@/lib/api-url";
 
 const createSummerLeagueSchema = z.object({
   name: z.string().min(1, "League name is required"),
@@ -55,7 +56,7 @@ export default function SummerLeagues() {
 
   const createLeagueMutation = useMutation({
     mutationFn: async (data: CreateSummerLeagueForm) => {
-      const response = await fetch('/api/summer-leagues', {
+      const response = await fetch(`${getApiBaseUrl()}/api/summer-leagues`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -93,7 +94,7 @@ export default function SummerLeagues() {
 
   const applyToLeagueMutation = useMutation({
     mutationFn: async (data: ApplyToLeagueForm) => {
-      const response = await fetch('/api/summer-applications', {
+      const response = await fetch(`${getApiBaseUrl()}/api/summer-applications`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

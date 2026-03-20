@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { getApiBaseUrl } from "@/lib/api-url";
 
 interface AdminSession {
   isAuthenticated: boolean;
@@ -130,7 +131,7 @@ export default function AdminDashboard() {
   // Fetch player account details for verification
   const fetchPlayerMutation = useMutation({
     mutationFn: async (playerAccountId: string) => {
-      const response = await fetch(`/api/player-accounts/${playerAccountId}`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/player-accounts/${playerAccountId}`, {
         credentials: 'include'
       });
       if (!response.ok) {
@@ -149,7 +150,7 @@ export default function AdminDashboard() {
   // Admin verification mutation
   const adminVerifyMutation = useMutation({
     mutationFn: async (playerAccountId: number) => {
-      const response = await fetch('/api/admin/verify-player', {
+      const response = await fetch(`${getApiBaseUrl()}/api/admin/verify-player`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

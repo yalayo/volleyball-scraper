@@ -39,9 +39,7 @@ function TrainingInvitationsTab({ playerAccountId }: { playerAccountId: number }
 
   const acceptInvitationMutation = useMutation({
     mutationFn: async (invitationId: number) => {
-      return await apiRequest(`/api/training-invitations/${invitationId}/accept`, {
-        method: "POST",
-      });
+      return await apiRequest("POST", `/api/training-invitations/${invitationId}/accept`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/training-invitations"] });
@@ -50,9 +48,7 @@ function TrainingInvitationsTab({ playerAccountId }: { playerAccountId: number }
 
   const declineInvitationMutation = useMutation({
     mutationFn: async (invitationId: number) => {
-      return await apiRequest(`/api/training-invitations/${invitationId}/decline`, {
-        method: "POST",
-      });
+      return await apiRequest("POST", `/api/training-invitations/${invitationId}/decline`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/training-invitations"] });
@@ -152,11 +148,7 @@ function SummerLeagueManagementTab({ playerAccountId }: { playerAccountId: numbe
 
   const createLeagueMutation = useMutation({
     mutationFn: async (leagueData: any) => {
-      return await apiRequest("/api/summer-leagues", {
-        method: "POST",
-        body: JSON.stringify(leagueData),
-        headers: { "Content-Type": "application/json" },
-      });
+      return await apiRequest("POST", "/api/summer-leagues", leagueData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/summer-leagues"] });
@@ -166,11 +158,7 @@ function SummerLeagueManagementTab({ playerAccountId }: { playerAccountId: numbe
 
   const createTeamMutation = useMutation({
     mutationFn: async (teamData: any) => {
-      return await apiRequest("/api/summer-teams", {
-        method: "POST",
-        body: JSON.stringify(teamData),
-        headers: { "Content-Type": "application/json" },
-      });
+      return await apiRequest("POST", "/api/summer-teams", teamData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/summer-teams"] });
@@ -519,12 +507,9 @@ export default function PlayerDashboard(props: PlayerDashboardProps) {
   // Join training session mutation
   const joinSessionMutation = useMutation({
     mutationFn: async (sessionId: number) => {
-      return await apiRequest(`/api/player-dashboard/join-training`, {
-        method: 'POST',
-        body: JSON.stringify({
-          sessionId,
-          playerAccountId: player?.id
-        })
+      return await apiRequest("POST", `/api/player-dashboard/join-training`, {
+        sessionId,
+        playerAccountId: player?.id,
       });
     },
     onSuccess: () => {

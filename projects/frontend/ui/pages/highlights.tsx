@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trophy, Award, TrendingUp, Calendar, Star, Sparkles, Target, Flame } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { getApiBaseUrl } from "@/lib/api-url";
 import { formatDistanceToNow } from "date-fns";
 
 interface Team {
@@ -85,7 +86,7 @@ export default function HighlightsPage() {
   // Generate highlights mutation
   const generateHighlightsMutation = useMutation({
     mutationFn: async (teamId: number) => {
-      const response = await fetch(`/api/team-highlights/${teamId}/generate`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/team-highlights/${teamId}/generate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

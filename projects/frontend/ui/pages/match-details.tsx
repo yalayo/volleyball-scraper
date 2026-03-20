@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Users, Trophy, Clock, MapPin, FileText, RefreshCw, Video } from "lucide-react";
 import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
+import { getApiBaseUrl } from "@/lib/api-url";
 import { useToast } from "@/hooks/use-toast";
 
 interface MatchSet {
@@ -90,7 +91,7 @@ export default function MatchDetails() {
 
   const generateVideoMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch(`/api/matches/${matchId}/generate-video`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/matches/${matchId}/generate-video`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

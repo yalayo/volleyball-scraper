@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Loader2, AlertCircle, Mail, Lock, ArrowRight } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
+import { getApiBaseUrl } from "@/lib/api-url";
 import LanguageSwitcher from "@/components/ui/language-switcher";
 
 interface LoginResponse {
@@ -48,7 +49,7 @@ export default function PlayerLogin(props: PlayerLoginProps) {
 
   const loginMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      const response = await fetch("/api/player-accounts/login", {
+      const response = await fetch(`${getApiBaseUrl()}/api/player-accounts/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: data.email, passwordHash: btoa(data.password) }),

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Shield, CheckCircle, AlertCircle, Users, UserCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { getApiBaseUrl } from "@/lib/api-url";
 
 interface VerificationGateProps {
   playerAccount: any;
@@ -52,7 +53,7 @@ export default function VerificationGate({ playerAccount, onVerified }: Verifica
 
     setIsLoadingPlayerInfo(true);
     try {
-      const response = await fetch(`/api/player-info/${samsId}`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/player-info/${samsId}`, {
         credentials: 'include'
       });
       
@@ -79,7 +80,7 @@ export default function VerificationGate({ playerAccount, onVerified }: Verifica
   // Verify another player mutation
   const verifyPlayerMutation = useMutation({
     mutationFn: async (targetSamsId: string) => {
-      const response = await fetch('/api/verify-player', {
+      const response = await fetch(`${getApiBaseUrl()}/api/verify-player`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

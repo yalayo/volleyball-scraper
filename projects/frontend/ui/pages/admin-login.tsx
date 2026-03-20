@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Shield, Eye, EyeOff } from "lucide-react";
+import { getApiBaseUrl } from "@/lib/api-url";
 import LanguageSwitcher from "@/components/ui/language-switcher";
 
 interface AdminLoginProps {
@@ -48,7 +49,7 @@ export default function AdminLogin(props: AdminLoginProps) {
     }
 
     try {
-      const response = await fetch("/api/admin/login", {
+      const response = await fetch(`${getApiBaseUrl()}/api/admin/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),

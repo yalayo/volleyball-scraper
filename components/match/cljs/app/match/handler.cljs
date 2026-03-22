@@ -141,10 +141,9 @@
                   category    (or (:category data) "General")]
               (if-not url
                 (cf/response-edn {:error "url is required"} {:status 400})
-                (do
-                  (.waitUntil execution-ctx
-                               (scraper/scrape-league! env url league-name category))
-                  (cf/response-edn {:message (str "Scraping started for: " league-name)} {:status 200}))))))
+                (js-await [result (scraper/scrape-league! env url league-name category)]
+                          (println "Result: " result)
+                          (cf/response-edn {:message (str "Scraping done for: " league-name) :data result} {:status 200}))))))
 
 (defn trigger-league-scrape [{:keys [route env execution-ctx]}]
   (let [id (js/parseInt (-> route :path-params :id) 10)]

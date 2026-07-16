@@ -24,11 +24,18 @@
                                 (do/storage-list+ ctx))))
 
 (def allowed-origins
-  #{"http://localhost:8081"
-    "https://leagues.busqandote.com"})
+  #{"https://leagues.busqandote.com"})
+
+(defn allowed-origin?
+  "Production origins are allowlisted explicitly; any localhost origin is
+   accepted so the shadow-cljs dev server keeps working regardless of port."
+  [origin]
+  (or (contains? allowed-origins origin)
+      (when origin
+        (some? (re-matches #"https?://localhost(:\d+)?" origin)))))
 
 (defn cors-headers-for [origin]
-  (if (allowed-origins origin)
+  (if (allowed-origin? origin)
     {"Access-Control-Allow-Origin" origin
      "Vary" "Origin"
      "Access-Control-Allow-Methods" "GET, POST, PUT, PATCH, DELETE, OPTIONS"

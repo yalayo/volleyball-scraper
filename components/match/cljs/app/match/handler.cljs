@@ -83,35 +83,61 @@
 
 ;; ── admin auth endpoints ─────────────────────────────────────────────────────
 
+(defn- issue-admin-token [env {:keys [id username role superadmin]}]
+  (let [claims (cond-> #js {:id       id
+                            :username username
+                            :role     role
+                            :exp      (+ (js/Math.floor (/ (.now js/Date) 1000)) 86400)}
+                 superadmin (doto (aset "superadmin" true)))]
+    (.sign jwt claims (aget env "JWT_SECRET"))))
+
+(defn- super-admin-user
+  "The super admin is not stored in the database: its credentials come from the
+   SUPER_ADMIN_USERNAME / SUPER_ADMIN_PASSWORD environment secrets (same pattern
+   as property-management-v's SUPER_ADMIN_EMAIL). Returns the user map when the
+   submitted credentials match, nil otherwise."
+  [env username password]
+  (let [su-name (aget env "SUPER_ADMIN_USERNAME")
+        su-pass (aget env "SUPER_ADMIN_PASSWORD")]
+    (when (and su-name su-pass
+               (= username su-name)
+               (= password su-pass))
+      {:id 0 :username su-name :role "superadmin" :superadmin true})))
+
 (defn admin-login [{:keys [request env]}]
-  (js-await [data                     (cf/request->auto request)
-             {:keys [success results]} (db/query+ {:select [:*]
-                                                    :from   [:volley_admin_users]
-                                                    :where  [:= :username (:username data)]})]
-            (let [user (first results)]
-              (if-not (and success user)
-                (cf/response-edn {:message "Invalid credentials"} {:status 401})
-                (js-await [hashed (hash-password (:password data))]
-                          (if (not= hashed (:password_hash user))
+  (js-await [data (cf/request->auto request)]
+            (if-let [super (super-admin-user env (:username data) (:password data))]
+              (cf/response-edn {:message "Login successful"
+                                :token   (issue-admin-token env super)
+                                :user    super}
+                               {:status 200})
+              ;; fall back to database-managed admin users
+              (js-await [{:keys [success results]} (db/query+ {:select [:*]
+                                                               :from   [:volley_admin_users]
+                                                               :where  [:= :username (:username data)]})]
+                        (let [user (first results)]
+                          (if-not (and success user)
                             (cf/response-edn {:message "Invalid credentials"} {:status 401})
-                            (let [claims #js {:id       (:id user)
-                                              :username (:username user)
-                                              :role     (:role user)
-                                              :exp      (+ (js/Math.floor (/ (.now js/Date) 1000)) 86400)}
-                                  token  (.sign jwt claims (aget env "JWT_SECRET"))]
-                              (cf/response-edn {:message "Login successful"
-                                                :token   token
-                                                :user    {:id       (:id user)
-                                                          :username (:username user)
-                                                          :role     (:role user)}}
-                                               {:status 200}))))))))
+                            (js-await [hashed (hash-password (:password data))]
+                                      (if (not= hashed (:password_hash user))
+                                        (cf/response-edn {:message "Invalid credentials"} {:status 401})
+                                        (cf/response-edn {:message "Login successful"
+                                                          :token   (issue-admin-token env {:id       (:id user)
+                                                                                           :username (:username user)
+                                                                                           :role     (:role user)})
+                                                          :user    {:id       (:id user)
+                                                                    :username (:username user)
+                                                                    :role     (:role user)}}
+                                                         {:status 200})))))))))
 
 (defn admin-logout [{:keys [_request _env]}]
   (cf/response-edn {:message "Logout successful"} {:status 200}))
 
 (defn admin-session [{:keys [_request _env user]}]
   (if user
-    (cf/response-edn {:isAuthenticated true :user user} {:status 200})
+    (cf/response-edn {:isAuthenticated true
+                      :user            (js->clj user :keywordize-keys true)}
+                     {:status 200})
     (cf/response-edn {:isAuthenticated false} {:status 200})))
 
 (defn admin-setup [{:keys [request env]}]

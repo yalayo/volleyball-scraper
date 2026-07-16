@@ -1,8 +1,7 @@
 (ns app.web.views
-  (:require [app.main-ui.views :as main]
-            ["@tanstack/react-query" :refer [QueryClientProvider]]
+  (:require ["@tanstack/react-query" :refer [QueryClientProvider]]
             ["/lib/queryClient" :refer [queryClient]]))
 
-(defn home-component []
+(defn home-component [main-ui]
   [:> QueryClientProvider {:client queryClient}
-   [main/component]])
+   main-ui])

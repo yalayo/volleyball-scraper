@@ -24,5 +24,7 @@
    ;; Scraping (admin-protected)
    ["/scrape"
     {:post {:handler handler/trigger-scrape :auth-required true}}]
+   ["/scrape/all"
+    {:post {:handler handler/trigger-scrape-all :auth-required true}}]
    ["/scrape/league/:id"
     {:post {:handler handler/trigger-league-scrape :auth-required true}}]])

@@ -134,7 +134,7 @@
 
 ;; ── scraping endpoints ────────────────────────────────────────────────────────
 
-(defn trigger-scrape [{:keys [request env execution-ctx]}]
+(defn trigger-scrape [{:keys [request env]}]
   (js-await [data (cf/request->auto request)]
             (let [url         (:url data)
                   league-name (or (:leagueName data) (str "League from " url))
@@ -142,8 +142,11 @@
               (if-not url
                 (cf/response-edn {:error "url is required"} {:status 400})
                 (js-await [result (scraper/scrape-league! env url league-name category)]
-                          (println "Result: " result)
                           (cf/response-edn {:message (str "Scraping done for: " league-name) :data result} {:status 200}))))))
+
+(defn trigger-scrape-all [{:keys [_request env execution-ctx]}]
+  (.waitUntil execution-ctx (scraper/scrape-all-leagues! env))
+  (cf/response-edn {:message "Scraping started for all active leagues"} {:status 200}))
 
 (defn trigger-league-scrape [{:keys [route env execution-ctx]}]
   (let [id (js/parseInt (-> route :path-params :id) 10)]

@@ -3,9 +3,7 @@
             [re-frame.core :as re-frame]
             [app.main-ui.subs   :as subs]
             [app.main-ui.events :as events]
-            [app.auth-ui.views      :as auth]
             [app.auth-ui.subs       :as auth-subs]
-            [app.register-ui.interface :as register]
             [app.volleyball-ui.subs :as vb-subs]
             [app.volleyball-ui.events :as vb-events]
             [app.auth-ui.config :as api-config]
@@ -57,11 +55,14 @@
   [player-dashboard
    {:onLogout #(re-frame/dispatch [::events/change-active-section "player-login"])}])
 
-(defn component []
+(defn component
+  "Top-level router. auth-page and register-page are component functions
+   injected by the project's composition root (app.frontend.core)."
+  [{:keys [auth-page register-page]}]
   (let [active @(re-frame/subscribe [::subs/active-section])]
     (case active
-      "auth"             [auth/component {:id "auth"}]
-      "register"         [register/component {:id "register"}]
+      "auth"             [auth-page {:id "auth"}]
+      "register"         [register-page {:id "register"}]
       "dashboard"        [dashboard-component]
       "player-login"     [player-login-component]
       "player-dashboard" [player-dashboard-component]

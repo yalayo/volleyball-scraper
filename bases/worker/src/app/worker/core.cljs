@@ -5,6 +5,7 @@
             [app.worker.async :refer [js-await]]
             [app.worker.durable-objects :as do]
             [app.worker.auth :as auth]
+            [app.worker.handler :as handler]
             [app.worker.cf :as cf :refer [defclass]]))
 
 ;; usage example of Durable Objects as a short-lived state
@@ -87,21 +88,24 @@
             handler   (get-in route-data [method-k :handler])
             requires-auth? (get-in route-data [method-k :auth-required])]
         (if (some? handler)
+          ;; Authenticate opportunistically so even public routes (e.g.
+          ;; /api/command) see the user when a valid token is sent.
           (js-await
-           [user (when requires-auth?
-                   (authenticate request env))]
-           (if (and requires-auth? (nil? user))
-             (add-cors-response (cf/response-error {:error "Unauthorized"} {:status 401}) origin)
-             (js-await
-              [resp (handler {:route route :request request :env env :execution-ctx ctx :user user})]
-              (add-cors-response resp origin))))
+           [raw-user (authenticate request env)]
+           (let [user (when raw-user (js->clj raw-user :keywordize-keys true))]
+             (if (and requires-auth? (nil? user))
+               (add-cors-response (cf/response-error {:error "Unauthorized"} {:status 401}) origin)
+               (js-await
+                [resp (handler {:route route :request request :env env :execution-ctx ctx :user user})]
+                (add-cors-response resp origin)))))
           (add-cors-response (cf/response-error {:error "Not implemented"}) origin))))))
 
 
 (defn init [{:keys [user-routes survey-routes plans-routes payment-routes
                     league-routes team-routes player-routes match-routes
-                    settings-routes price-routes request-routes]}]
-  (let [routes (into base-routes (concat user-routes survey-routes plans-routes payment-routes
+                    settings-routes price-routes request-routes controller]}]
+  (let [routes (into base-routes (concat (handler/create-routes controller)
+                                         user-routes survey-routes plans-routes payment-routes
                                          league-routes team-routes player-routes match-routes
                                          settings-routes price-routes request-routes))
         router (r/router routes)

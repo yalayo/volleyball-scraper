@@ -15,9 +15,10 @@
    {:db (-> db
             (assoc-in [:user :sign-in :loading?] true)
             (assoc-in [:user :sign-in :error] nil))
+    :rules/set-submitting true
     :http-xhrio {:method          :post
-                 :uri             (str (config/get-api-url) "/api/admin/login")
-                 :params          form-data
+                 :uri             (str (config/get-api-url) "/api/command")
+                 :params          {:command :admin-sign-in :data form-data}
                  :format          (ajax-edn/edn-request-format)
                  :response-format (ajax-edn/edn-response-format)
                  :timeout         8000
@@ -37,28 +38,36 @@
                    (assoc-in [:user :info] user)
                    (assoc-in [:user :user-loged-in?] true)
                    (assoc-in [:ui :active-section] "dashboard"))]
-     {:db db'})))
+     ;; The auth-sync tracker picks up the logged-in state and the navigation
+     ;; rules route to the dashboard; just clear the submitting flag here.
+     {:db db'
+      :rules/set-submitting false})))
 
 (re-frame/reg-event-fx
  ::sign-in-error
  (fn [{:keys [db]} [_ error]]
    (js/console.error "Signin failed:" error)
    (let [msg (or (get-in error [:response :message])
+                 (when (= :invalid-credentials (get-in error [:response :error]))
+                   "Invalid credentials")
                  (get-in error [:parse-error :original-text])
                  "Login failed. Please check your credentials.")]
      {:db (-> db
               (assoc-in [:user :sign-in :loading?] false)
-              (assoc-in [:user :sign-in :error] msg))})))
+              (assoc-in [:user :sign-in :error] msg))
+      :rules/set-submitting false})))
 
 (re-frame/reg-event-fx
  ::show-sign-up
  [local-storage-interceptor]
  (fn [{:keys [db]} _]
    (analytics/event "sign_up_attempt" {})
-   {:db (assoc-in db [:ui :active-section] "register")}))
+   {:db             (assoc-in db [:ui :active-section] "register")
+    :rules/navigate :register}))
 
-(re-frame/reg-event-db
+(re-frame/reg-event-fx
  ::go-home
  [local-storage-interceptor]
- (fn [db _]
-   (assoc-in db [:ui :active-section] "home")))
+ (fn [{:keys [db]} _]
+   {:db             (assoc-in db [:ui :active-section] "home")
+    :rules/navigate :home}))

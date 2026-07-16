@@ -1,8 +1,8 @@
 (ns app.main-ui.views
   (:require [reagent.core  :as r]
             [re-frame.core :as re-frame]
-            [app.main-ui.subs   :as subs]
             [app.main-ui.events :as events]
+            [app.main-ui.rules  :as rules]
             [app.auth-ui.subs       :as auth-subs]
             [app.volleyball-ui.subs :as vb-subs]
             [app.volleyball-ui.events :as vb-events]
@@ -55,20 +55,24 @@
   [player-dashboard
    {:onLogout #(re-frame/dispatch [::events/change-active-section "player-login"])}])
 
+(defn submitting []
+  [:div "Signing in…"])
+
 (defn component
-  "Top-level router. auth-page and register-page are component functions
-   injected by the project's composition root (app.frontend.core)."
+  "Top-level router driven by the odoyle navigation rules (rules/current-section
+   derefs the reactive session). auth-page and register-page are component
+   functions injected by the project's composition root (app.frontend.core)."
   [{:keys [auth-page register-page]}]
-  (let [active @(re-frame/subscribe [::subs/active-section])]
-    (case active
-      "auth"             [auth-page {:id "auth"}]
-      "register"         [register-page {:id "register"}]
-      "dashboard"        [dashboard-component]
-      "player-login"     [player-login-component]
-      "player-dashboard" [player-dashboard-component]
-      ;; default: landing page
-      [landing
-       {:onSignIn       #(re-frame/dispatch [::events/change-active-section "auth"])
-        :onPlayerSignIn #(re-frame/dispatch [::events/change-active-section "player-login"])
-        :onSignUp       #(re-frame/dispatch [::events/change-active-section "register"])
-        :onEnter        #(re-frame/dispatch [::events/change-active-section "dashboard"])}])))
+  (case (rules/current-section)
+    :auth             [auth-page {:id "auth"}]
+    :register         [register-page {:id "register"}]
+    :dashboard        [dashboard-component]
+    :player-login     [player-login-component]
+    :player-dashboard [player-dashboard-component]
+    :submitting       [submitting]
+    ;; default: landing page
+    [landing
+     {:onSignIn       #(re-frame/dispatch [::events/change-active-section "auth"])
+      :onPlayerSignIn #(re-frame/dispatch [::events/change-active-section "player-login"])
+      :onSignUp       #(re-frame/dispatch [::events/change-active-section "register"])
+      :onEnter        #(re-frame/dispatch [::events/change-active-section "dashboard"])}]))

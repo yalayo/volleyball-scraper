@@ -14,3 +14,17 @@
     (jwt/verify token secret)
     (catch :default _
       nil)))
+
+(defn hash-password
+  "Salted SHA-256 hex digest, resolved as a promise."
+  [password]
+  (let [salt    "volleyball-admin-salt"
+        input   (str salt ":" password)
+        encoder (js/TextEncoder.)
+        data    (.encode encoder input)]
+    (-> (js/Promise.resolve (.digest js/crypto.subtle "SHA-256" data))
+        (.then (fn [hash-buffer]
+                 (let [hash-array (js/Uint8Array. hash-buffer)]
+                   (->> hash-array
+                        (map (fn [b] (.padStart (.toString b 16) 2 "0")))
+                        (apply str))))))))

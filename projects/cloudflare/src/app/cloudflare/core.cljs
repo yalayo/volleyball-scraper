@@ -2,6 +2,7 @@
   (:require [integrant.core :as ig]
             [app.worker.core :as worker]
             [app.core.interface :as core]
+            [app.controller.interface :as controller]
             [app.user.interface :as user]
             [app.survey.interface :as survey]
             [app.plans.interface :as plans]
@@ -13,6 +14,7 @@
 
 (def config
   {::core/domain      {}
+   ::controller/controller {:core (ig/ref ::core/domain)}
    ::user/routes      {}
    ::survey/routes    {}
    ::plans/routes     {}
@@ -21,7 +23,8 @@
    ::team/routes      {}
    ::player/routes    {}
    ::match/routes     {}
-   ::worker/handler {:user-routes    (ig/ref ::user/routes)
+   ::worker/handler {:controller     (ig/ref ::controller/controller)
+                     :user-routes    (ig/ref ::user/routes)
                      :survey-routes  (ig/ref ::survey/routes)
                      :plans-routes   (ig/ref ::plans/routes)
                      :payment-routes (ig/ref ::payment/routes)

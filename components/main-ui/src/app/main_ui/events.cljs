@@ -2,17 +2,42 @@
   (:require [re-frame.core :as re-frame :refer [after]]
             [cljs.reader]
             [app.main-ui.db :as db]
+            [app.main-ui.rules :as rules]
             [day8.re-frame.http-fx]
             [ajax.edn :as ajax-edn]
             [app.auth-ui.config :as config]))
 
 (def local-storage-interceptor (after db/db->local-store))
 
-(re-frame/reg-event-db
+;; ── Rules effects ─────────────────────────────────────────────────────────────
+;; Registered globally so any UI component can navigate through the rules
+;; session by returning these effects (reference: core-ui in
+;; property-management-v).
+
+(re-frame/reg-fx :rules/navigate
+  (fn [intent] (rules/navigate-to! intent)))
+
+(re-frame/reg-fx :rules/logout
+  (fn [_] (rules/logout!)))
+
+(re-frame/reg-fx :rules/set-submitting
+  (fn [v] (rules/set-submitting! v)))
+
+;; ── Navigation ────────────────────────────────────────────────────────────────
+
+(re-frame/reg-event-fx
  ::change-active-section
  [local-storage-interceptor]
- (fn [db [_ id _]]
-   (assoc-in db [:ui :active-section] id)))
+ (fn [{:keys [db]} [_ id _]]
+   {:db             (assoc-in db [:ui :active-section] id)
+    :rules/navigate (keyword id)}))
+
+(re-frame/reg-event-fx
+ ::restore-nav
+ (fn [{:keys [db]} _]
+   {:rules/navigate (keyword (get-in db [:ui :active-section] "home"))}))
+
+;; ── Sign out ──────────────────────────────────────────────────────────────────
 
 (re-frame/reg-event-fx
  ::sign-out
@@ -25,13 +50,14 @@
                  :on-success      [::signed-out]
                  :on-failure      [::signed-out]}}))
 
-(re-frame/reg-event-db
+(re-frame/reg-event-fx
  ::signed-out
  [local-storage-interceptor]
- (fn [db _]
-   (-> db
-       (assoc-in [:user :info] nil)
-       (assoc-in [:user :token] nil)
-       (assoc-in [:user :user-loged-in?] false)
-       (assoc-in [:user :sign-out :loading?] false)
-       (assoc-in [:ui :active-section] "auth"))))
+ (fn [{:keys [db]} _]
+   {:db (-> db
+            (assoc-in [:user :info] nil)
+            (assoc-in [:user :token] nil)
+            (assoc-in [:user :user-loged-in?] false)
+            (assoc-in [:user :sign-out :loading?] false)
+            (assoc-in [:ui :active-section] "auth"))
+    :rules/logout nil}))

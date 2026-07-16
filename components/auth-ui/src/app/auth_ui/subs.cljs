@@ -20,3 +20,13 @@
  ::sign-in-error
  (fn [db _]
    (get-in db [:user :sign-in :error])))
+
+(re-frame/reg-sub
+ ::logged-in?
+ (fn [db _]
+   (get-in db [:user :user-loged-in?] false)))
+
+(re-frame/reg-sub
+ ::user-role
+ (fn [db _]
+   (get-in db [:user :info :role])))

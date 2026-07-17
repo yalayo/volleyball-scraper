@@ -14,4 +14,9 @@
                                                       "day8.re_frame.tracing.trace_enabled_QMARK_"  true}}}
            :release {:compiler-options {:optimizations :simple}
                      :output-dir "out/public/js"}
-           :optimizations :none}}}
+           :optimizations :none}
+          :test
+          {:target    :node-test
+           :output-to "out/node-tests.js"
+           :ns-regexp "-test$"
+           :autorun   false}}}

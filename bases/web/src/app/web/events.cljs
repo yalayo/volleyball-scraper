@@ -10,14 +10,19 @@
 ;; Interceptor Chain
 (def interceptors [->local-store])
 
-;; To restore db from the browser's local storage
+;; To restore db from the browser's local storage. Unreadable state (written
+;; by an older app version) is discarded instead of breaking the boot.
 (re-frame/reg-cofx
  :local-store-db
  (fn [cofx _]
    (assoc cofx :local-store-db
-          (into (sorted-map)
-                (some->> (.getItem js/localStorage db/ls-key)
-                         (cljs.reader/read-string))))))
+          (try
+            (into (sorted-map)
+                  (some->> (.getItem js/localStorage db/ls-key)
+                           (cljs.reader/read-string)))
+            (catch :default _
+              (.removeItem js/localStorage db/ls-key)
+              nil)))))
 
 (re-frame/reg-event-fx
  ::initialize-db

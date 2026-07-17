@@ -23,6 +23,11 @@
 (re-frame/reg-fx :rules/set-submitting
   (fn [v] (rules/set-submitting! v)))
 
+(re-frame/reg-fx :rules/set-auth
+  (fn [{:keys [authenticated? role]}]
+    (rules/insert-facts! (boolean authenticated?)
+                         (keyword (or role "guest")))))
+
 ;; ── Navigation ────────────────────────────────────────────────────────────────
 
 (re-frame/reg-event-fx
@@ -36,6 +41,14 @@
  ::restore-nav
  (fn [{:keys [db]} _]
    {:rules/navigate (keyword (get-in db [:ui :active-section] "home"))}))
+
+;; Pushes the persisted auth state into the rules session at boot, so a
+;; still-valid session from the last visit lands on the dashboard directly.
+(re-frame/reg-event-fx
+ ::restore-auth
+ (fn [{:keys [db]} _]
+   {:rules/set-auth {:authenticated? (get-in db [:user :user-loged-in?] false)
+                     :role           (get-in db [:user :info :role])}}))
 
 ;; ── Sign out ──────────────────────────────────────────────────────────────────
 

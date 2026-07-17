@@ -38,9 +38,10 @@
                    (assoc-in [:user :info] user)
                    (assoc-in [:user :user-loged-in?] true)
                    (assoc-in [:ui :active-section] "dashboard"))]
-     ;; The auth-sync tracker picks up the logged-in state and the navigation
-     ;; rules route to the dashboard; just clear the submitting flag here.
+     ;; Push the auth facts into the navigation rules; with submitting cleared
+     ;; they route to the dashboard (both effect orders are covered by rules).
      {:db db'
+      :rules/set-auth       {:authenticated? true :role (:role user)}
       :rules/set-submitting false})))
 
 (re-frame/reg-event-fx

@@ -15,10 +15,12 @@
 
 (defn mount-root [main-ui]
   (reset! mounted-ui main-ui)
-  (re-frame/clear-subscription-cache!)
   (.render root (r/as-element [views/home-component main-ui])))
 
 (defn ^:dev/after-load re-mount []
+  ;; Only hot reloads clear the cache — clearing on first mount would dispose
+  ;; subscriptions created during Integrant init of the UI components.
+  (re-frame/clear-subscription-cache!)
   (when-let [ui @mounted-ui]
     (mount-root ui)))
 

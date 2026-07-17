@@ -10,6 +10,9 @@ interface Column<T> {
   header: string;
   render: (item: T) => React.ReactNode;
   searchable?: boolean;
+  /** Extra classes for this column's cells, e.g. "hidden md:table-cell" to
+   *  drop low-priority columns on small screens. */
+  className?: string;
 }
 
 interface DataTableProps<T> {
@@ -81,7 +84,9 @@ export default function DataTable<T extends { id: number }>({
         <TableHeader>
           <TableRow>
             {columns.map((column) => (
-              <TableHead key={column.key}>{column.header}</TableHead>
+              <TableHead key={column.key} className={`whitespace-nowrap ${column.className ?? ""}`}>
+                {column.header}
+              </TableHead>
             ))}
           </TableRow>
         </TableHeader>
@@ -90,7 +95,7 @@ export default function DataTable<T extends { id: number }>({
             Array.from({ length: 5 }).map((_, index) => (
               <TableRow key={index}>
                 {columns.map((column) => (
-                  <TableCell key={column.key}>
+                  <TableCell key={column.key} className={column.className}>
                     <Skeleton className="h-4 w-24" />
                   </TableCell>
                 ))}
@@ -106,7 +111,7 @@ export default function DataTable<T extends { id: number }>({
             filteredData.map((item) => (
               <TableRow key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                 {columns.map((column) => (
-                  <TableCell key={column.key}>
+                  <TableCell key={column.key} className={column.className}>
                     {column.render(item)}
                   </TableCell>
                 ))}

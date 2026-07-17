@@ -105,19 +105,21 @@ export default function Dashboard(props: DashboardProps) {
       key: "name",
       header: "League Name",
       render: (league: League) => (
-        <div className="font-medium text-gray-900">{league.name}</div>
+        <div className="font-medium text-gray-900 whitespace-nowrap">{league.name}</div>
       ),
     },
     {
       key: "category",
       header: "Category",
+      className: "hidden sm:table-cell",
       render: (league: League) => (
-        <Badge variant="outline">{league.category || "Unknown"}</Badge>
+        <Badge variant="outline" className="whitespace-nowrap">{league.category || "Unknown"}</Badge>
       ),
     },
     {
       key: "seriesId",
       header: "Series ID",
+      className: "hidden lg:table-cell",
       render: (league: League) => (
         <span className="text-gray-600">{league.seriesId || "-"}</span>
       ),
@@ -145,8 +147,9 @@ export default function Dashboard(props: DashboardProps) {
     {
       key: "updatedAt",
       header: "Last Updated",
+      className: "hidden xl:table-cell",
       render: (league: League) => (
-        <span className="text-sm text-gray-500">
+        <span className="text-sm text-gray-500 whitespace-nowrap">
           {league.updatedAt ? formatDistanceToNow(new Date(league.updatedAt), { addSuffix: true }) : "-"}
         </span>
       ),
@@ -160,17 +163,19 @@ export default function Dashboard(props: DashboardProps) {
       render: (team: Team & { league?: League }) => (
         <div className="flex items-center space-x-3">
           {team.logoUrl && (
-            <img src={team.logoUrl} alt={`${team.name} logo`} className="w-8 h-8 rounded" />
+            <img src={team.logoUrl} alt={`${team.name} logo`} className="w-8 h-8 rounded shrink-0" />
           )}
-          <div className="font-medium text-gray-900">{team.name}</div>
+          <div className="font-medium text-gray-900 whitespace-nowrap">{team.name}</div>
         </div>
       ),
     },
     {
       key: "league",
       header: "League",
-      render: (team: Team & { league?: League }) =>
-        team.league ? team.league.name : "-",
+      className: "hidden md:table-cell",
+      render: (team: Team & { league?: League }) => (
+        <span className="whitespace-nowrap">{team.league ? team.league.name : "-"}</span>
+      ),
     },
     {
       key: "players",
@@ -200,6 +205,7 @@ export default function Dashboard(props: DashboardProps) {
     {
       key: "homepage",
       header: "Homepage",
+      className: "hidden lg:table-cell",
       render: (team: Team) => {
         if (!team.homepage) return <span className="text-gray-400">-</span>;
         return (
@@ -218,6 +224,7 @@ export default function Dashboard(props: DashboardProps) {
     {
       key: "teamId",
       header: "Team ID",
+      className: "hidden xl:table-cell",
       render: (team: Team) =>
         team.teamId ? (
           <code className="bg-gray-100 px-2 py-1 rounded text-sm">{team.teamId}</code>
@@ -253,8 +260,12 @@ export default function Dashboard(props: DashboardProps) {
     {
       key: "updatedAt",
       header: "Last Updated",
-      render: (team: Team) =>
-        team.updatedAt ? formatDistanceToNow(new Date(team.updatedAt), { addSuffix: true }) : "-",
+      className: "hidden xl:table-cell",
+      render: (team: Team) => (
+        <span className="whitespace-nowrap">
+          {team.updatedAt ? formatDistanceToNow(new Date(team.updatedAt), { addSuffix: true }) : "-"}
+        </span>
+      ),
     },
   ];
 
@@ -263,18 +274,20 @@ export default function Dashboard(props: DashboardProps) {
       key: "name",
       header: "Player Name",
       render: (player: Player & { team?: Team }) => (
-        <div className="font-medium text-gray-900">{player.name}</div>
+        <div className="font-medium text-gray-900 whitespace-nowrap">{player.name}</div>
       ),
     },
     {
       key: "team",
       header: "Team",
-      render: (player: Player & { team?: Team }) =>
-        player.team ? player.team.name : "-",
+      render: (player: Player & { team?: Team }) => (
+        <span className="whitespace-nowrap">{player.team ? player.team.name : "-"}</span>
+      ),
     },
     {
       key: "nationality",
       header: "Nationality",
+      className: "hidden lg:table-cell",
       render: (player: Player) =>
         player.nationality ? (
           <Badge variant="secondary">{player.nationality}</Badge>
@@ -287,7 +300,7 @@ export default function Dashboard(props: DashboardProps) {
       header: "Position",
       render: (player: Player) =>
         player.position ? (
-          <Badge variant="outline">{player.position}</Badge>
+          <Badge variant="outline" className="whitespace-nowrap">{player.position}</Badge>
         ) : (
           <span className="text-gray-400">-</span>
         ),
@@ -295,6 +308,7 @@ export default function Dashboard(props: DashboardProps) {
     {
       key: "jerseyNumber",
       header: "Jersey #",
+      className: "hidden sm:table-cell",
       render: (player: Player) =>
         player.jerseyNumber ? (
           <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-800 rounded-full text-sm font-bold">
@@ -307,8 +321,12 @@ export default function Dashboard(props: DashboardProps) {
     {
       key: "updatedAt",
       header: "Last Updated",
-      render: (player: Player) =>
-        player.updatedAt ? formatDistanceToNow(new Date(player.updatedAt), { addSuffix: true }) : "-",
+      className: "hidden xl:table-cell",
+      render: (player: Player) => (
+        <span className="whitespace-nowrap">
+          {player.updatedAt ? formatDistanceToNow(new Date(player.updatedAt), { addSuffix: true }) : "-"}
+        </span>
+      ),
     },
   ];
 
@@ -331,7 +349,7 @@ export default function Dashboard(props: DashboardProps) {
       key: "result",
       header: "Result",
       render: (match: Match) => (
-        <div className="space-y-1">
+        <div className="space-y-1 whitespace-nowrap">
           <div className="font-bold text-lg">
             {match.homeSets || 0} : {match.awaySets || 0}
           </div>
@@ -344,6 +362,7 @@ export default function Dashboard(props: DashboardProps) {
     {
       key: "details",
       header: "Set Details",
+      className: "hidden lg:table-cell",
       render: (match: Match) => (
         <div className="text-sm">
           {match.setResults ? (
@@ -359,8 +378,9 @@ export default function Dashboard(props: DashboardProps) {
     {
       key: "date",
       header: "Date",
+      className: "hidden sm:table-cell",
       render: (match: Match) => (
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-gray-600 whitespace-nowrap">
           {match.matchDate || match.createdAt
             ? formatDistanceToNow(new Date(match.matchDate || match.createdAt!), { addSuffix: true })
             : "-"
@@ -390,7 +410,7 @@ export default function Dashboard(props: DashboardProps) {
       key: "operation",
       header: "Operation",
       render: (log: ScrapeLog) => (
-        <div className="font-medium">{log.operation}</div>
+        <div className="font-medium whitespace-nowrap">{log.operation}</div>
       ),
     },
     {
@@ -401,15 +421,16 @@ export default function Dashboard(props: DashboardProps) {
     {
       key: "message",
       header: "Message",
+      className: "hidden md:table-cell",
       render: (log: ScrapeLog) => (
-        <div className="text-sm text-gray-600">{log.message || "-"}</div>
+        <div className="text-sm text-gray-600 min-w-[16rem]">{log.message || "-"}</div>
       ),
     },
     {
       key: "createdAt",
       header: "Started",
       render: (log: ScrapeLog) => (
-        <span className="text-sm text-gray-500">
+        <span className="text-sm text-gray-500 whitespace-nowrap">
           {log.createdAt ? formatDistanceToNow(new Date(log.createdAt), { addSuffix: true }) : "-"}
         </span>
       ),
@@ -421,7 +442,7 @@ export default function Dashboard(props: DashboardProps) {
       case "dashboard":
         return (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 md:gap-6 mb-6 md:mb-8">
               <StatsCard
                 title="Total Leagues"
                 value={isLoading ? "..." : stats?.totalLeagues.toString() || "0"}
@@ -455,7 +476,7 @@ export default function Dashboard(props: DashboardProps) {
             </div>
 
             <Tabs defaultValue="leagues" className="w-full">
-              <TabsList className="grid grid-cols-4 w-fit">
+              <TabsList className="grid grid-cols-4 w-full max-w-md sm:w-fit">
                 <TabsTrigger value="leagues">Leagues</TabsTrigger>
                 <TabsTrigger value="teams">Teams</TabsTrigger>
                 <TabsTrigger value="players">Players</TabsTrigger>
@@ -608,38 +629,38 @@ export default function Dashboard(props: DashboardProps) {
 
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         <header className="bg-white shadow-sm border-b border-gray-200">
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">
+          <div className="px-4 md:px-6 py-3 md:py-4">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <div className="min-w-0">
+                <h2 className="text-xl md:text-2xl font-bold text-gray-900 truncate">
                   {activeTab === "dashboard" ? "Dashboard" :
                    activeTab === "leagues" ? "Leagues" :
                    activeTab === "teams" ? "Teams" :
                    activeTab === "players" ? "Players" :
                    activeTab === "games" ? "Games" : "Logs"}
                 </h2>
-                <p className="text-sm text-gray-600">
+                <p className="hidden md:block text-sm text-gray-600">
                   {activeTab === "dashboard" ? "Monitor and manage volleyball data scraping operations" :
                    activeTab === "leagues" ? "Manage volleyball leagues and competitions" :
                    activeTab === "teams" ? "View and organize team information" :
                    activeTab === "players" ? "Browse player rosters and details" : "Track scraping activity and performance"}
                 </p>
               </div>
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center gap-2 md:gap-4 ml-auto">
                 {stats?.lastScrapeTime && (
-                  <div className="text-sm text-gray-500">
+                  <div className="hidden xl:block text-sm text-gray-500 whitespace-nowrap">
                     Last scrape: <span className="font-medium">
                       {formatDistanceToNow(new Date(stats.lastScrapeTime), { addSuffix: true })}
                     </span>
                   </div>
                 )}
-                <Button onClick={handleRefreshData} variant="outline" className="flex items-center space-x-2">
+                <Button onClick={handleRefreshData} variant="outline" className="flex items-center gap-2" title="Refresh">
                   <RefreshCw className="w-4 h-4" />
-                  <span>Refresh</span>
+                  <span className="hidden sm:inline">Refresh</span>
                 </Button>
-                <Button onClick={handleStartScraping} className="flex items-center space-x-2">
+                <Button onClick={handleStartScraping} className="flex items-center gap-2" title="Start Scraping">
                   <Play className="w-4 h-4" />
-                  <span>Start Scraping</span>
+                  <span className="hidden sm:inline">Start Scraping</span>
                 </Button>
               </div>
             </div>
@@ -647,7 +668,7 @@ export default function Dashboard(props: DashboardProps) {
         </header>
 
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
-          <div className="p-6">
+          <div className="p-4 md:p-6">
             {renderContent()}
           </div>
         </main>

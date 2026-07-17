@@ -11,9 +11,7 @@
    ["/scrape-logs"
     {:get {:handler handler/get-scrape-logs}}]
 
-   ;; Admin auth
-   ["/admin/login"
-    {:post {:handler handler/admin-login}}]
+   ;; Admin auth — sign-in goes through POST /api/command {:command :admin-sign-in}
    ["/admin/logout"
     {:post {:handler handler/admin-logout}}]
    ["/admin/session"

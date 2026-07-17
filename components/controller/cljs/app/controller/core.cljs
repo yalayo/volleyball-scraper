@@ -2,12 +2,17 @@
   "Imperative shell around the pure domain core (app.core.system/process).
    Receives {:command :data :user :env :execution-ctx} from the /api/command
    and /api/query endpoints, gathers facts, lets the domain rules decide, and
-   runs the side effects (D1 queries, scraping, JWT issuing)."
+   runs the side effects against the storage-backed domain stores."
   (:require ["jsonwebtoken" :as jwt]
             [app.worker.async :refer [js-await]]
             [app.worker.auth :as auth]
-            [app.worker.db :as db]
-            [app.match.interface :as match]))
+            [app.storage.interface :as storage]
+            [app.match.interface :as match]
+            [app.match.store :as match-store]
+            [app.league.store :as league-store]
+            [app.team.store :as team-store]
+            [app.player.store :as player-store]
+            [app.user.admin-store :as admin-store]))
 
 ;; ── auth helpers ──────────────────────────────────────────────────────────────
 
@@ -22,22 +27,25 @@
 ;; ── command handlers ──────────────────────────────────────────────────────────
 
 (defn- handle-admin-sign-in!
-  "Gathers the sign-in facts (env super admin match, DB admin row, password
-   hash) and lets the domain rules decide the outcome."
+  "Gathers the sign-in facts (env super admin match, stored admin entity,
+   password hash) and lets the domain rules decide the outcome."
   [core env {:keys [username password]}]
-  (js-await [{:keys [results]} (db/query+ {:select [:*]
-                                           :from   [:volley_admin_users]
-                                           :where  [:= :username username]})
-             provided-hash    (auth/hash-password password)]
+  (js-await [admin         (admin-store/find-by-username+ username)
+             provided-hash (auth/hash-password password)]
             (let [su-name (aget env "SUPER_ADMIN_USERNAME")
                   su-pass (aget env "SUPER_ADMIN_PASSWORD")
+                  db-user (when (:admin-user/username admin)
+                            {:id            (:db/id admin)
+                             :username      (:admin-user/username admin)
+                             :role          (:admin-user/role admin)
+                             :password_hash (:admin-user/password-hash admin)})
                   result  ((:process core)
                            {:command :admin-sign-in
                             :data    {:super-match?   (and (some? su-name) (some? su-pass)
                                                            (= username su-name)
                                                            (= password su-pass))
                                       :super-username su-name
-                                      :db-user        (first results)
+                                      :db-user        db-user
                                       :provided-hash  provided-hash}})]
               (if (= :sign-in-ok (:action result))
                 {:message "Login successful"
@@ -64,18 +72,15 @@
         {:message (str "Scraping started for " url)})))
 
 (defn- handle-scrape-league! [env execution-ctx {:keys [id]}]
-  (js-await [{:keys [results]} (db/query+ {:select [:*]
-                                           :from   [:volley_leagues]
-                                           :where  [:= :id id]})]
-            (let [league (first results)]
-              (cond
-                (nil? league)       {:error :league-not-found}
-                (nil? (:url league)) {:error :league-url-not-set}
-                :else (do (.waitUntil execution-ctx
-                                      (match/scrape-league! env (:url league)
-                                                            (:name league)
-                                                            (:category league)))
-                          {:message (str "Scraping started for league: " (:name league))})))))
+  (js-await [league (league-store/by-id+ id)]
+            (cond
+              (nil? league)        {:error :league-not-found}
+              (nil? (:url league)) {:error :league-url-not-set}
+              :else (do (.waitUntil execution-ctx
+                                    (match/scrape-league! env (:url league)
+                                                          (:name league)
+                                                          (:category league)))
+                        {:message (str "Scraping started for league: " (:name league))}))))
 
 (defn- handle-scrape-all! [env execution-ctx]
   (.waitUntil execution-ctx (match/scrape-all-leagues! env))
@@ -83,35 +88,24 @@
 
 ;; ── query handlers ────────────────────────────────────────────────────────────
 
-(defn- run-query [query-map]
-  (js-await [{:keys [success results]} (db/query+ query-map)]
-            (if success
-              {:data results}
-              {:error :query-failed})))
+(defn- as-data [p]
+  (.then p (fn [rows] {:data rows})))
 
 (defn- get-stats []
-  (js-await [leagues-r (db/query+ {:select [[[:count :*] :total]]
-                                   :from   [:volley_leagues]
-                                   :where  [:= :is_active 1]})
-             teams-r   (db/query+ {:select [[[:count :*] :total]]
-                                   :from   [:volley_teams]
-                                   :where  [:= :is_active 1]})
-             players-r (db/query+ {:select [[[:count :*] :total]]
-                                   :from   [:volley_players]
-                                   :where  [:= :is_active 1]})
-             matches-r (db/query+ {:select [[[:count :*] :total]]
-                                   :from   [:volley_matches]})
-             log-r     (db/query+ {:select   [[:created_at :last_scrape_time]]
-                                   :from     [:volley_scrape_logs]
-                                   :where    [:= :status "success"]
-                                   :order-by [[:created_at :desc]]
-                                   :limit    1})]
-            {:data {:totalLeagues   (-> leagues-r :results first :total)
-                    :totalTeams     (-> teams-r   :results first :total)
-                    :totalPlayers   (-> players-r :results first :total)
-                    :totalMatches   (-> matches-r :results first :total)
+  (js-await [leagues (storage/find-by-type "league")
+             teams   (storage/find-by-type "team")
+             players (storage/find-by-type "player")
+             matches (storage/find-by-type "match")
+             logs    (match-store/recent-logs+)]
+            {:data {:totalLeagues   (count leagues)
+                    :totalTeams     (count teams)
+                    :totalPlayers   (count players)
+                    :totalMatches   (count matches)
                     :totalSeries    0
-                    :lastScrapeTime (-> log-r :results first :last_scrape_time)}}))
+                    :lastScrapeTime (->> logs
+                                         (filter #(= "success" (:status %)))
+                                         first
+                                         :createdAt)}}))
 
 ;; ── dispatch ──────────────────────────────────────────────────────────────────
 
@@ -124,33 +118,11 @@
     :scrape-all    (with-scrape-access core user #(handle-scrape-all! env execution-ctx))
 
     ;; queries
-    :get-leagues (run-query {:select   [:*]
-                             :from     [:volley_leagues]
-                             :where    [:= :is_active 1]
-                             :order-by [[:name :asc]]})
-    :get-teams   (run-query {:select    [:t.* [:l.name :league_name]]
-                             :from      [[:volley_teams :t]]
-                             :left-join [[:volley_leagues :l] [:= :t.league_id :l.id]]
-                             :where     [:= :t.is_active 1]
-                             :order-by  [[:t.name :asc]]})
-    :get-players (run-query {:select    [:p.* [:t.name :team_name]]
-                             :from      [[:volley_players :p]]
-                             :left-join [[:volley_teams :t] [:= :p.team_id :t.id]]
-                             :where     [:= :p.is_active 1]
-                             :order-by  [[:p.name :asc]]})
-    :get-matches (run-query {:select    [:m.*
-                                         [:ht.name :home_team_name_joined]
-                                         [:at.name :away_team_name_joined]
-                                         [:l.name  :league_name]]
-                             :from      [[:volley_matches :m]]
-                             :left-join [[:volley_teams :ht]  [:= :m.home_team_id :ht.id]
-                                         [:volley_teams :at]  [:= :m.away_team_id :at.id]
-                                         [:volley_leagues :l] [:= :m.league_id :l.id]]
-                             :order-by  [[:m.match_date :desc]]})
-    :get-scrape-logs (run-query {:select   [:*]
-                                 :from     [:volley_scrape_logs]
-                                 :order-by [[:created_at :desc]]
-                                 :limit    50})
-    :get-stats (get-stats)
+    :get-leagues     (as-data (league-store/find-all+))
+    :get-teams       (as-data (team-store/find-all+))
+    :get-players     (as-data (player-store/find-all+))
+    :get-matches     (as-data (match-store/find-all+))
+    :get-scrape-logs (as-data (match-store/recent-logs+))
+    :get-stats       (get-stats)
 
     {:error :unknown-command}))

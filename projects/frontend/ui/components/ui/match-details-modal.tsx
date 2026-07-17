@@ -5,16 +5,37 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Trophy, Users, Calendar, MapPin } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import type { Match } from "@shared/schema";
+import type { Match, Team, League } from "@shared/schema";
+
+type TeamWithLeague = Team & { league?: League };
 
 interface MatchDetailsModalProps {
   open: boolean;
   onClose: () => void;
   match: Match | null;
+  teams?: TeamWithLeague[];
+  leagues?: League[];
+  onViewTeam?: (team: TeamWithLeague) => void;
+  onViewLeague?: (league: League) => void;
 }
 
-export default function MatchDetailsModal({ open, onClose, match }: MatchDetailsModalProps) {
+export default function MatchDetailsModal({
+  open, onClose, match, teams = [], leagues = [], onViewTeam, onViewLeague,
+}: MatchDetailsModalProps) {
   if (!match) return null;
+
+  const homeTeam = teams.find((t) => t.id === match.homeTeamId);
+  const awayTeam = teams.find((t) => t.id === match.awayTeamId);
+  const league = leagues.find((l) => l.id === match.leagueId);
+
+  const teamButton = (team: TeamWithLeague | undefined, name: string | null) =>
+    team && onViewTeam ? (
+      <button className="hover:underline hover:text-blue-700" onClick={() => onViewTeam(team)}>
+        {name}
+      </button>
+    ) : (
+      <span>{name}</span>
+    );
 
   const parseSetResults = (setResults: string | null) => {
     if (!setResults) return [];
@@ -70,10 +91,17 @@ export default function MatchDetailsModal({ open, onClose, match }: MatchDetails
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-center text-xl">
-                {match.homeTeamName} vs {match.awayTeamName}
+                {teamButton(homeTeam, match.homeTeamName)} vs {teamButton(awayTeam, match.awayTeamName)}
               </CardTitle>
               <div className="text-center text-sm text-gray-500">
-                League {match.leagueId} • Match ID: {match.matchId || "Unknown"}
+                {league && onViewLeague ? (
+                  <button className="hover:underline hover:text-gray-700" onClick={() => onViewLeague(league)}>
+                    {league.name}
+                  </button>
+                ) : (
+                  <span>{league?.name || "Unknown League"}</span>
+                )}
+                {" • Match ID: "}{match.matchId || "Unknown"}
               </div>
             </CardHeader>
             <CardContent>

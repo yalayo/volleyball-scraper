@@ -14,10 +14,13 @@
   (js-await [matches (store/find-all+)]
             (cf/response-edn matches {:status 200})))
 
-(defn get-by-team [{:keys [route _request _env]}]
+(defn get-by-team
+  "Consumed directly by a browser fetch().json() call (team-detail-modal.tsx),
+   not through the EDN-aware re-frame layer — must respond JSON."
+  [{:keys [route _request _env]}]
   (let [team-id (-> route :path-params :teamId)]
     (js-await [matches (store/find-by-team+ team-id)]
-              (cf/response-edn matches {:status 200}))))
+              (cf/response-json matches {:status 200}))))
 
 (defn get-stats [{:keys [_request _env]}]
   (js-await [leagues (storage/find-by-type "league")

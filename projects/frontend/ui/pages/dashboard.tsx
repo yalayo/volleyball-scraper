@@ -4,9 +4,10 @@ import Sidebar from "@/components/layout/sidebar";
 import StatsCard from "@/components/ui/stats-card";
 import DataTable from "@/components/ui/data-table";
 import ScrapingModal from "@/components/ui/scraping-modal";
-import TeamPlayersModal from "@/components/ui/team-players-modal";
 import MatchDetailsModal from "@/components/ui/match-details-modal";
-import TeamGamesModal from "@/components/ui/team-games-modal";
+import TeamDetailModal from "@/components/ui/team-detail-modal";
+import LeagueDetailModal from "@/components/ui/league-detail-modal";
+import PlayerDetailModal from "@/components/ui/player-detail-modal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -62,22 +63,55 @@ export default function Dashboard(props: DashboardProps) {
 
   const [showScrapingModal, setShowScrapingModal] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [teamPlayersModal, setTeamPlayersModal] = useState<{
-    open: boolean;
-    teamId: number;
-    teamName: string;
-  }>({ open: false, teamId: 0, teamName: "" });
 
-  const [teamGamesModal, setTeamGamesModal] = useState<{
+  const [teamDetailModal, setTeamDetailModal] = useState<{
     open: boolean;
-    teamId: number;
-    teamName: string;
-  }>({ open: false, teamId: 0, teamName: "" });
+    team: (Team & { league?: League }) | null;
+    initialTab: "roster" | "matches";
+  }>({ open: false, team: null, initialTab: "roster" });
+
+  const [leagueDetailModal, setLeagueDetailModal] = useState<{
+    open: boolean;
+    league: League | null;
+  }>({ open: false, league: null });
+
+  const [playerDetailModal, setPlayerDetailModal] = useState<{
+    open: boolean;
+    player: (Player & { team?: Team }) | null;
+  }>({ open: false, player: null });
 
   const [matchDetailsModal, setMatchDetailsModal] = useState<{
     open: boolean;
     match: Match | null;
   }>({ open: false, match: null });
+
+  // Drill-down navigation: any click into a related entity closes whatever
+  // detail modal is currently open and opens the destination, so the user
+  // never has more than one entity-detail dialog stacked at a time.
+  const closeDetailModals = () => {
+    setTeamDetailModal((prev) => ({ ...prev, open: false }));
+    setLeagueDetailModal((prev) => ({ ...prev, open: false }));
+    setPlayerDetailModal((prev) => ({ ...prev, open: false }));
+  };
+
+  const handleViewTeam = (team: Team & { league?: League }, tab: "roster" | "matches" = "roster") => {
+    closeDetailModals();
+    setTeamDetailModal({ open: true, team, initialTab: tab });
+  };
+
+  const handleViewLeague = (league: League) => {
+    // Some callers only have a partial league ({id, name} nested on a team
+    // or player) — always resolve the full record from the loaded list so
+    // the modal's category/series/url/updatedAt fields are never blank.
+    const fullLeague = leagues.find((l) => l.id === league.id) ?? league;
+    closeDetailModals();
+    setLeagueDetailModal({ open: true, league: fullLeague });
+  };
+
+  const handleViewPlayer = (player: Player & { team?: Team }) => {
+    closeDetailModals();
+    setPlayerDetailModal({ open: true, player });
+  };
 
   const handleStartScraping = () => {
     setShowScrapingModal(true);
@@ -105,7 +139,12 @@ export default function Dashboard(props: DashboardProps) {
       key: "name",
       header: "League Name",
       render: (league: League) => (
-        <div className="font-medium text-gray-900 whitespace-nowrap">{league.name}</div>
+        <button
+          className="font-medium text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap text-left"
+          onClick={() => handleViewLeague(league)}
+        >
+          {league.name}
+        </button>
       ),
     },
     {
@@ -161,21 +200,32 @@ export default function Dashboard(props: DashboardProps) {
       key: "name",
       header: "Team Name",
       render: (team: Team & { league?: League }) => (
-        <div className="flex items-center space-x-3">
+        <button
+          className="flex items-center space-x-3 text-left"
+          onClick={() => handleViewTeam(team, "roster")}
+        >
           {team.logoUrl && (
             <img src={team.logoUrl} alt={`${team.name} logo`} className="w-8 h-8 rounded shrink-0" />
           )}
-          <div className="font-medium text-gray-900 whitespace-nowrap">{team.name}</div>
-        </div>
+          <span className="font-medium text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap">
+            {team.name}
+          </span>
+        </button>
       ),
     },
     {
       key: "league",
       header: "League",
       className: "hidden md:table-cell",
-      render: (team: Team & { league?: League }) => (
-        <span className="whitespace-nowrap">{team.league ? team.league.name : "-"}</span>
-      ),
+      render: (team: Team & { league?: League }) =>
+        team.league ? (
+          <button
+            className="whitespace-nowrap text-blue-600 hover:text-blue-800 hover:underline text-left"
+            onClick={() => handleViewLeague(team.league!)}
+          >
+            {team.league.name}
+          </button>
+        ) : "-",
     },
     {
       key: "players",
@@ -186,11 +236,7 @@ export default function Dashboard(props: DashboardProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setTeamPlayersModal({
-              open: true,
-              teamId: team.id,
-              teamName: team.name
-            })}
+            onClick={() => handleViewTeam(team, "roster")}
             className="h-6 px-2"
           >
             <UserIcon className="w-3 h-3 mr-1" />
@@ -241,11 +287,7 @@ export default function Dashboard(props: DashboardProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setTeamGamesModal({
-              open: true,
-              teamId: team.id,
-              teamName: team.name
-            })}
+            onClick={() => handleViewTeam(team, "matches")}
             className="h-6 px-2"
           >
             <Trophy className="w-3 h-3 mr-1" />
@@ -274,15 +316,30 @@ export default function Dashboard(props: DashboardProps) {
       key: "name",
       header: "Player Name",
       render: (player: Player & { team?: Team }) => (
-        <div className="font-medium text-gray-900 whitespace-nowrap">{player.name}</div>
+        <button
+          className="font-medium text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap text-left"
+          onClick={() => handleViewPlayer(player)}
+        >
+          {player.name}
+        </button>
       ),
     },
     {
       key: "team",
       header: "Team",
-      render: (player: Player & { team?: Team }) => (
-        <span className="whitespace-nowrap">{player.team ? player.team.name : "-"}</span>
-      ),
+      render: (player: Player & { team?: Team }) => {
+        const fullTeam = teams.find((t) => t.id === player.teamId);
+        return fullTeam ? (
+          <button
+            className="whitespace-nowrap text-blue-600 hover:text-blue-800 hover:underline text-left"
+            onClick={() => handleViewTeam(fullTeam, "roster")}
+          >
+            {fullTeam.name}
+          </button>
+        ) : (
+          <span className="whitespace-nowrap">{player.team ? player.team.name : "-"}</span>
+        );
+      },
     },
     {
       key: "nationality",
@@ -334,16 +391,39 @@ export default function Dashboard(props: DashboardProps) {
     {
       key: "teams",
       header: "Match",
-      render: (match: Match & { homeTeam?: Team; awayTeam?: Team }) => (
-        <div className="space-y-1">
-          <div className="font-medium text-gray-900">
-            {match.homeTeam?.name || match.homeTeamName} vs {match.awayTeam?.name || match.awayTeamName}
+      render: (match: Match) => {
+        const homeTeam = teams.find((t) => t.id === match.homeTeamId);
+        const awayTeam = teams.find((t) => t.id === match.awayTeamId);
+        const league = leagues.find((l) => l.id === match.leagueId);
+        const teamLink = (team: (Team & { league?: League }) | undefined, name: string | null) =>
+          team ? (
+            <button
+              className="text-blue-600 hover:text-blue-800 hover:underline"
+              onClick={() => handleViewTeam(team, "matches")}
+            >
+              {name}
+            </button>
+          ) : (
+            <span>{name}</span>
+          );
+        return (
+          <div className="space-y-1 whitespace-nowrap">
+            <div className="font-medium text-gray-900">
+              {teamLink(homeTeam, match.homeTeamName)} vs {teamLink(awayTeam, match.awayTeamName)}
+            </div>
+            {league ? (
+              <button
+                className="text-sm text-gray-500 hover:text-gray-700 hover:underline"
+                onClick={() => handleViewLeague(league)}
+              >
+                {league.name}
+              </button>
+            ) : (
+              <div className="text-sm text-gray-500">Unknown League</div>
+            )}
           </div>
-          <div className="text-sm text-gray-500">
-            {match.leagueId ? `League ${match.leagueId}` : "Unknown League"}
-          </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       key: "result",
@@ -476,11 +556,12 @@ export default function Dashboard(props: DashboardProps) {
             </div>
 
             <Tabs defaultValue="leagues" className="w-full">
-              <TabsList className="grid grid-cols-4 w-full max-w-md sm:w-fit">
+              <TabsList className="grid grid-cols-5 w-full max-w-lg sm:w-fit">
                 <TabsTrigger value="leagues">Leagues</TabsTrigger>
                 <TabsTrigger value="teams">Teams</TabsTrigger>
                 <TabsTrigger value="players">Players</TabsTrigger>
-                <TabsTrigger value="logs">Activity Logs</TabsTrigger>
+                <TabsTrigger value="games">Games</TabsTrigger>
+                <TabsTrigger value="logs">Logs</TabsTrigger>
               </TabsList>
 
               <TabsContent value="leagues">
@@ -526,6 +607,22 @@ export default function Dashboard(props: DashboardProps) {
                       columns={playerColumns}
                       loading={isLoading}
                       searchPlaceholder="Search players..."
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="games">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Games Overview</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <DataTable
+                      data={matches}
+                      columns={matchColumns}
+                      loading={isLoading}
+                      searchPlaceholder="Search games..."
                     />
                   </CardContent>
                 </Card>
@@ -597,6 +694,22 @@ export default function Dashboard(props: DashboardProps) {
             </CardContent>
           </Card>
         );
+      case "games":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Games Management</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DataTable
+                data={matches}
+                columns={matchColumns}
+                loading={isLoading}
+                searchPlaceholder="Search games..."
+              />
+            </CardContent>
+          </Card>
+        );
       case "logs":
         return (
           <Card>
@@ -643,7 +756,8 @@ export default function Dashboard(props: DashboardProps) {
                   {activeTab === "dashboard" ? "Monitor and manage volleyball data scraping operations" :
                    activeTab === "leagues" ? "Manage volleyball leagues and competitions" :
                    activeTab === "teams" ? "View and organize team information" :
-                   activeTab === "players" ? "Browse player rosters and details" : "Track scraping activity and performance"}
+                   activeTab === "players" ? "Browse player rosters and details" :
+                   activeTab === "games" ? "Browse match results and schedules" : "Track scraping activity and performance"}
                 </p>
               </div>
               <div className="flex items-center gap-2 md:gap-4 ml-auto">
@@ -682,25 +796,50 @@ export default function Dashboard(props: DashboardProps) {
         onSuccess={props.onRefresh}
       />
 
-      <TeamPlayersModal
-        open={teamPlayersModal.open}
-        onOpenChange={(open) => setTeamPlayersModal(prev => ({ ...prev, open }))}
-        teamId={teamPlayersModal.teamId}
-        teamName={teamPlayersModal.teamName}
+      <TeamDetailModal
+        open={teamDetailModal.open}
+        onClose={() => setTeamDetailModal(prev => ({ ...prev, open: false }))}
+        team={teamDetailModal.team}
+        initialTab={teamDetailModal.initialTab}
+        teams={teams}
+        onViewMatch={(match) => setMatchDetailsModal({ open: true, match })}
+        onViewLeague={handleViewLeague}
+        onViewTeam={(team) => handleViewTeam(team, "roster")}
+        onViewPlayer={handleViewPlayer}
       />
 
-      <TeamGamesModal
-        open={teamGamesModal.open}
-        onClose={() => setTeamGamesModal(prev => ({ ...prev, open: false }))}
-        teamId={teamGamesModal.teamId}
-        teamName={teamGamesModal.teamName}
-        onViewMatch={(match) => setMatchDetailsModal({ open: true, match })}
+      <LeagueDetailModal
+        open={leagueDetailModal.open}
+        onClose={() => setLeagueDetailModal(prev => ({ ...prev, open: false }))}
+        league={leagueDetailModal.league}
+        teams={teams}
+        players={players}
+        matches={matches}
+        onViewTeam={(team) => handleViewTeam(team, "roster")}
+      />
+
+      <PlayerDetailModal
+        open={playerDetailModal.open}
+        onClose={() => setPlayerDetailModal(prev => ({ ...prev, open: false }))}
+        player={playerDetailModal.player}
+        teams={teams}
+        onViewTeam={(team) => handleViewTeam(team, "roster")}
       />
 
       <MatchDetailsModal
         open={matchDetailsModal.open}
         onClose={() => setMatchDetailsModal({ open: false, match: null })}
         match={matchDetailsModal.match}
+        teams={teams}
+        leagues={leagues}
+        onViewTeam={(team) => {
+          setMatchDetailsModal({ open: false, match: null });
+          handleViewTeam(team, "roster");
+        }}
+        onViewLeague={(league) => {
+          setMatchDetailsModal({ open: false, match: null });
+          handleViewLeague(league);
+        }}
       />
     </div>
   );

@@ -7,7 +7,10 @@
   (js-await [players (store/find-all+)]
             (cf/response-edn players {:status 200})))
 
-(defn get-by-team [{:keys [route _request _env]}]
+(defn get-by-team
+  "Consumed directly by a browser fetch().json() call (team-detail-modal.tsx),
+   not through the EDN-aware re-frame layer — must respond JSON."
+  [{:keys [route _request _env]}]
   (let [team-id (-> route :path-params :teamId)]
     (js-await [players (store/find-by-team+ team-id)]
-              (cf/response-edn players {:status 200}))))
+              (cf/response-json players {:status 200}))))

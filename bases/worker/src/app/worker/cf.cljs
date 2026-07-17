@@ -23,6 +23,14 @@
 	(response (pr-str body)
 						(assoc-in init [:headers "Content-Type"] "text/edn")))
 
+(defn response-json
+	"Like `response`, but serializes Clojure data to JSON. Only for routes
+	 consumed by a raw browser `fetch().json()` call — everything wired
+	 through re-frame expects EDN (see response-edn)."
+	[body init]
+	(response (.stringify js/JSON (clj->js body))
+						(assoc-in init [:headers "Content-Type"] "application/json")))
+
 (defn response-error
   ([]
    (response-edn {:error "Something went wrong"} {:status 200}))

@@ -35,20 +35,31 @@
   (-> (storage/entity eid)
       (.then (fn [e] (when (:league/name e) (->api e))))))
 
-(defn- find-id+ [name category]
-  (-> (storage/q {:where [['?e :league/name name]
-                          ['?e :league/category category]]})
-      (.then first)))
+(defn- find-id+
+  "Existing league eid — the page URL is the stable identity (names and
+   categories are display text and may vary between callers); name+category
+   remains as a fallback for manually created leagues without URL."
+  [name category url]
+  (-> (if url
+        (storage/find-by-attr :league/url url)
+        (js/Promise.resolve nil))
+      (.then (fn [eids]
+               (or (first eids)
+                   (-> (storage/q {:where [['?e :league/name name]
+                                           ['?e :league/category category]]})
+                       (.then first)))))))
 
 (defn upsert!+
-  "Creates or updates a league identified by name+category. Resolves to its eid."
+  "Creates or updates a league identified by its URL. Resolves to its eid."
   [{:keys [name category url series-id sams-id]}]
-  (-> (find-id+ name category)
+  (-> (find-id+ name category url)
       (.then (fn [eid]
                (if eid
                  (-> (storage/transact!
                       [(clean {:db/id             eid
                                :db/type           "league"
+                               :league/name       name
+                               :league/category   category
                                :league/url        url
                                :league/series-id  series-id
                                :league/sams-id    sams-id

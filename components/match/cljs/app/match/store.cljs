@@ -86,6 +86,7 @@
                       :match/date           match-date
                       :match/status         status
                       :match/location       location
+                      :match/sams-url       sams-url
                       :match/updated-at     (now)})]
     (-> (storage/find-by-attr :match/sams-id match-id)
         (.then first)

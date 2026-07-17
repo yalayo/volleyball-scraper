@@ -48,11 +48,12 @@
   [url]
   (-> url (.split "#") first (.split "?") first))
 
-(defn page-dir-url
-  "Directory of the league page, used to resolve relative popup links."
+(defn page-origin
+  "Scheme + host of the league page. SAMS pages carry
+   <base href=\"https://<host>/\">, so all relative links (popups, servlets)
+   resolve against the site root — not the page directory."
   [url]
-  (let [base (base-page-url url)]
-    (subs base 0 (inc (.lastIndexOf base "/")))))
+  (re-first "^(https?://[^/]+)" url))
 
 (defn build-matches-url
   "Full playing schedule (all matches) of a series."
@@ -80,8 +81,15 @@
 (defn build-match-details-url
   "Public popup URL with the details of a single match."
   [url match-id]
-  (str (page-dir-url url)
-       "popup/matchSeries/matchDetails.xhtml?matchId=" match-id))
+  (str (page-origin url)
+       "/popup/matchSeries/matchDetails.xhtml?matchId=" match-id))
+
+(defn build-roster-csv-url
+  "Official roster CSV export (works even when the CMS team page does not
+   render the player table)."
+  [url team-id]
+  (str (page-origin url)
+       "/servlet/sportsclub/TeamMemberCsvExport?teamId=" team-id "&playersOnly=true"))
 
 ;; ── league extraction ─────────────────────────────────────────────────────────
 
@@ -160,6 +168,37 @@
                       :team-id       team-db-id
                       :is-active     1})))))
     []))
+
+;; ── roster CSV export ─────────────────────────────────────────────────────────
+;; Some clubs publish their roster only through the servlet CSV export, and
+;; the CMS teamMain view stays empty. Columns (windows-1252, all quoted):
+;; Nachname;Vorname;Titel;"Titel Vorname Nachname";"Titel Nachname, Vorname";
+;; Größe;Geschlecht;Trikot;Position/Funktion Offizieller;spielberechtigt
+
+(defn- csv-line-fields
+  "Fields of one export line — every field is double-quoted."
+  [line]
+  (mapv #(nth % 1) (re-find-all "\"([^\"]*)\"" line)))
+
+(defn parse-roster-csv
+  "Players from the TeamMemberCsvExport payload. These rows carry no SAMS
+   teamMemberId, so :player-id stays nil and upserts match on name+team."
+  [csv team-db-id]
+  (->> (.split (or csv "") (js/RegExp. "\\r?\\n"))
+       rest                                            ; header line
+       (map csv-line-fields)
+       (keep (fn [fields]
+               (let [[last-name first-name _ _ _ _ _ jersey position _] fields
+                     name (str first-name " " last-name)]
+                 (when (and last-name first-name
+                            (not= "" last-name) (not= "" first-name))
+                   {:name          (.trim name)
+                    :player-id     nil
+                    :jersey-number (not-empty jersey)
+                    :position      (not-empty position)
+                    :nationality   nil
+                    :team-id       team-db-id
+                    :is-active     1}))))))
 
 ;; ── match extraction (matches view, playingScheduleMode=full) ─────────────────
 

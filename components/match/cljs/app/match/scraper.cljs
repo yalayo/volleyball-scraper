@@ -2,7 +2,8 @@
   "Imperative shell of the league scraper: fetches SAMS pages and persists
    what app.match.core extracts through the storage-backed domain stores.
    All parsing lives in the functional core."
-  (:require [app.worker.async :refer [js-await]]
+  (:require [clojure.string :as str]
+            [app.worker.async :refer [js-await]]
             [app.match.core :as core]
             [app.match.store :as match-store]
             [app.league.store :as league-store]
@@ -80,8 +81,9 @@
 
 (defn- scrape-players-for-team!
   "Fetches a team's roster (CMS page first, CSV export as fallback) and
-   persists its players. Resolves to the number of players found; roster
-   sources that fail don't abort the league run."
+   persists its players. Resolves to {:team :count :source}, where :source
+   is :page, :csv, or :none — clubs that haven't published a roster yet are
+   common preseason and are distinguishable in the log from a real failure."
   [base-url series-id team team-id->db-id]
   (let [team-db-id (get team-id->db-id (:team-id team))]
     (-> (fetch-html (core/build-team-roster-url base-url series-id (:team-id team)))
@@ -91,14 +93,17 @@
                   []))
         (.then (fn [players]
                  (if (seq players)
-                   players
-                   (fetch-roster-csv-players+ base-url team team-db-id))))
-        (.then (fn [players]
+                   (js/Promise.resolve [players :page])
+                   (.then (fetch-roster-csv-players+ base-url team team-db-id)
+                          (fn [csv-players] [csv-players :csv])))))
+        (.then (fn [[players source]]
                  (js-await [_ (sequentially+ player-store/upsert!+ players)]
-                           (count players))))
+                           {:team   (:name team)
+                            :count  (count players)
+                            :source (if (seq players) source :none)})))
         (.catch (fn [err]
                   (js/console.error "Roster scrape failed for team" (:name team) ":" (.-message err))
-                  0)))))
+                  {:team (:name team) :count 0 :source :error})))))
 
 ;; ── main entry points ─────────────────────────────────────────────────────────
 
@@ -132,15 +137,18 @@
             [team-db-ids (sequentially+ team-store/upsert!+ teams)]
             (let [team-id->db-id (zipmap (map :team-id teams) team-db-ids)]
               (js-await
-               [player-counts (sequentially+
-                               #(scrape-players-for-team! url series-id % team-id->db-id)
-                               teams)
-                match-html    (fetch-html (core/build-matches-url url series-id))]
-               (let [matches (-> (core/extract-matches match-html series-id league-id url)
-                                 (core/link-matches-to-teams team-id->db-id))
-                     summary {:teams   (count teams)
-                              :players (reduce + 0 player-counts)
-                              :matches (count matches)}]
+               [roster-results (sequentially+
+                                #(scrape-players-for-team! url series-id % team-id->db-id)
+                                teams)
+                match-html     (fetch-html (core/build-matches-url url series-id))]
+               (let [matches       (-> (core/extract-matches match-html series-id league-id url)
+                                       (core/link-matches-to-teams team-id->db-id))
+                     rostered      (filter #(pos? (:count %)) roster-results)
+                     unpublished   (filter #(= :none (:source %)) roster-results)
+                     failed        (filter #(= :error (:source %)) roster-results)
+                     summary       {:teams   (count teams)
+                                    :players (reduce + 0 (map :count roster-results))
+                                    :matches (count matches)}]
                  (js-await
                   [_ (sequentially+ match-store/upsert!+ matches)
                    _ (league-store/set-teams-count!+ league-id (count teams))
@@ -151,7 +159,13 @@
                                        (:teams summary) " teams, "
                                        (:players summary) " players, "
                                        (:matches summary) " matches")
-                       :details   (str "url=" url " series=" series-id)
+                       :details   (str "url=" url " series=" series-id
+                                       " | rosters published: " (count rostered) "/" (:teams summary)
+                                       " (" (str/join ", " (map #(str (:team %) "=" (:count %)) rostered)) ")"
+                                       (when (seq unpublished)
+                                         (str " | not yet published: " (str/join ", " (map :team unpublished))))
+                                       (when (seq failed)
+                                         (str " | roster fetch FAILED: " (str/join ", " (map :team failed)))))
                        :duration  (- (.now js/Date) start-ms)
                        :created   (:teams summary)
                        :updated   (:players summary)

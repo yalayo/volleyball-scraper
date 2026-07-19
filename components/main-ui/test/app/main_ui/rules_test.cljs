@@ -51,3 +51,16 @@
   (rules/reset-session!)
   (rules/navigate-to! :player-login)
   (is (= :player-login (rules/current-section))))
+
+(deftest tracker-requires-authentication
+  (rules/reset-session!)
+  (testing "unauthenticated visitors don't reach the tracker"
+    (rules/navigate-to! :tracker)
+    (is (not= :tracker (rules/current-section))))
+  (testing "authenticated admins do"
+    (rules/insert-facts! true :superadmin)
+    (rules/navigate-to! :tracker)
+    (is (= :tracker (rules/current-section))))
+  (testing "leaving the tracker returns to the dashboard"
+    (rules/navigate-to! :dashboard)
+    (is (= :dashboard (rules/current-section)))))

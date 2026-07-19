@@ -108,6 +108,49 @@
  (fn [db [_ response]]
    (assoc-in db [:volleyball :scrape-logs] (:data response))))
 
+;; Tracked games (live game tracker)
+
+(re-frame/reg-event-fx
+ ::load-stat-games
+ (fn [{:keys [db]} _]
+   (query-fx db :stat-game [::stat-games-loaded] [::query-error "tracked games"])))
+
+(re-frame/reg-event-db
+ ::stat-games-loaded
+ (fn [db [_ response]]
+   (assoc-in db [:volleyball :stat-games] (:data response))))
+
+(re-frame/reg-event-fx
+ ::save-game
+ (fn [{:keys [db]} [_ game-data]]
+   {:db (assoc-in db [:volleyball :save-game-status] "saving")
+    :http-xhrio {:method          :post
+                 :uri             (str (config/get-api-url) "/api/command")
+                 :params          {:command :save-game :data game-data}
+                 :headers         {"Authorization" (str "Bearer " (get-in db [:user :token] ""))}
+                 :format          (ajax-edn/edn-request-format)
+                 :response-format (ajax-edn/edn-response-format)
+                 :timeout         8000
+                 :on-success      [::game-saved]
+                 :on-failure      [::save-game-error]}}))
+
+(re-frame/reg-event-fx
+ ::game-saved
+ (fn [{:keys [db]} _]
+   {:db       (assoc-in db [:volleyball :save-game-status] "saved")
+    :dispatch [::load-stat-games]}))
+
+(re-frame/reg-event-fx
+ ::save-game-error
+ (fn [{:keys [db]} [_ error]]
+   (js/console.error "Failed to save game:" error)
+   {:db (assoc-in db [:volleyball :save-game-status] "error")}))
+
+(re-frame/reg-event-db
+ ::reset-save-game-status
+ (fn [db _]
+   (assoc-in db [:volleyball :save-game-status] nil)))
+
 ;; Errors
 
 (re-frame/reg-event-fx

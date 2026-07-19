@@ -7,7 +7,8 @@ import {
   Bot,
   FileText,
   Play,
-  Gamepad2
+  Gamepad2,
+  Volleyball
 } from "lucide-react";
 
 interface SidebarProps {
@@ -15,6 +16,7 @@ interface SidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   onLogout?: () => void;
+  onOpenTracker?: () => void;
 }
 
 const tabItems = [
@@ -33,7 +35,7 @@ const linkItems = [
 
 // Collapses to an icon-only rail below lg so the content area keeps its space
 // on small screens; expands to the full labelled sidebar on large screens.
-export default function Sidebar({ onStartScraping, activeTab, onTabChange }: SidebarProps) {
+export default function Sidebar({ onStartScraping, activeTab, onTabChange, onOpenTracker }: SidebarProps) {
   const itemClasses = (active: boolean) =>
     `w-full justify-center lg:justify-start ${active ? "" : "text-gray-700 hover:bg-gray-100"}`;
 
@@ -69,6 +71,18 @@ export default function Sidebar({ onStartScraping, activeTab, onTabChange }: Sid
                 <span className="hidden lg:inline">{label}</span>
               </Button>
             ))}
+            {onOpenTracker && (
+              <Button
+                variant="ghost"
+                className={itemClasses(false)}
+                size="sm"
+                title="Live Tracker"
+                onClick={onOpenTracker}
+              >
+                <Volleyball className="w-4 h-4 shrink-0 lg:mr-3" />
+                <span className="hidden lg:inline">Live Tracker</span>
+              </Button>
+            )}
             {linkItems.map(({ href, label, Icon }) => (
               <a key={href} href={href} className="block w-full">
                 <Button

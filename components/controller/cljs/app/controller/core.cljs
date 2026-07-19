@@ -9,6 +9,7 @@
             [app.storage.interface :as storage]
             [app.match.interface :as match]
             [app.match.store :as match-store]
+            [app.match.game-store :as game-store]
             [app.league.store :as league-store]
             [app.team.store :as team-store]
             [app.player.store :as player-store]
@@ -86,6 +87,12 @@
   (.waitUntil execution-ctx (match/scrape-all-leagues! env))
   {:message "Scraping started for all active leagues"})
 
+(defn- handle-save-game! [{:keys [teamAName teamBName] :as data}]
+  (if-not (and teamAName teamBName)
+    {:error :missing-team-names}
+    (js-await [eid (game-store/save!+ data)]
+              {:message "Game saved" :id eid})))
+
 ;; ── query handlers ────────────────────────────────────────────────────────────
 
 (defn- as-data [p]
@@ -116,6 +123,9 @@
     :scrape-url    (with-scrape-access core user #(handle-scrape-url! env execution-ctx data))
     :scrape-league (with-scrape-access core user #(handle-scrape-league! env execution-ctx data))
     :scrape-all    (with-scrape-access core user #(handle-scrape-all! env execution-ctx))
+    :save-game     (if user
+                     (handle-save-game! data)
+                     {:error :unauthorized})
 
     ;; queries
     :get-leagues     (as-data (league-store/find-all+))
@@ -123,6 +133,7 @@
     :get-players     (as-data (player-store/find-all+))
     :get-matches     (as-data (match-store/find-all+))
     :get-scrape-logs (as-data (match-store/recent-logs+))
+    :get-stat-games  (as-data (game-store/find-all+))
     :get-stats       (get-stats)
 
     {:error :unknown-command}))

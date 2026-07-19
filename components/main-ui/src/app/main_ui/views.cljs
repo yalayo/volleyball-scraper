@@ -13,13 +13,15 @@
             ["/pages/dashboard$default"        :as dashboard-js]
             ["/pages/not-found$default"        :as not-found-js]
             ["/pages/player-login$default"     :as player-login-js]
-            ["/pages/player-dashboard$default" :as player-dashboard-js]))
+            ["/pages/player-dashboard$default" :as player-dashboard-js]
+            ["/pages/game-tracker$default"     :as game-tracker-js]))
 
 (def landing          (r/adapt-react-class landing-js))
 (def dashboard        (r/adapt-react-class dashboard-js))
 (def not-found        (r/adapt-react-class not-found-js))
 (def player-login     (r/adapt-react-class player-login-js))
 (def player-dashboard (r/adapt-react-class player-dashboard-js))
+(def game-tracker     (r/adapt-react-class game-tracker-js))
 
 (defn dashboard-component []
   (re-frame/dispatch [::vb-events/load-data])
@@ -43,7 +45,25 @@
         :authToken   auth-token
         :apiBaseUrl  (api-config/get-api-url)
         :onRefresh   #(re-frame/dispatch [::vb-events/load-data])
-        :onLogout    #(re-frame/dispatch [::events/sign-out])}])))
+        :onLogout    #(re-frame/dispatch [::events/sign-out])
+        :onOpenTracker #(re-frame/dispatch [::events/change-active-section "tracker"])}])))
+
+(defn tracker-component []
+  ;; roster data for team prefill; a fresh status for every tracker visit
+  (re-frame/dispatch [::vb-events/load-data])
+  (re-frame/dispatch [::vb-events/reset-save-game-status])
+  (fn []
+    (let [teams       @(re-frame/subscribe [::vb-subs/teams])
+          players     @(re-frame/subscribe [::vb-subs/players])
+          save-status @(re-frame/subscribe [::vb-subs/save-game-status])]
+      [game-tracker
+       {:teams      (clj->js teams)
+        :players    (clj->js players)
+        :saveStatus save-status
+        :onSave     (fn [payload]
+                      (re-frame/dispatch [::vb-events/save-game
+                                          (js->clj payload :keywordize-keys true)]))
+        :onExit     #(re-frame/dispatch [::events/change-active-section "dashboard"])}])))
 
 (defn player-login-component []
   [player-login
@@ -67,6 +87,7 @@
     :auth             [auth-page {:id "auth"}]
     :register         [register-page {:id "register"}]
     :dashboard        [dashboard-component]
+    :tracker          [tracker-component]
     :player-login     [player-login-component]
     :player-dashboard [player-dashboard-component]
     :submitting       [submitting]

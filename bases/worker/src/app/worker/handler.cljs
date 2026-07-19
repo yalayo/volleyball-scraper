@@ -36,6 +36,7 @@
    :player     :get-players
    :match      :get-matches
    :stats      :get-stats
+   :stat-game  :get-stat-games
    :scrape-log :get-scrape-logs})
 
 (defn query

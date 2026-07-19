@@ -9,6 +9,9 @@
 
 (def ^:private player-sections #{:player-login :player-dashboard})
 
+;; Sections an authenticated admin can visit besides the dashboard.
+(def ^:private admin-sections #{:tracker})
+
 (def rules
   (o/ruleset
    {;; Authenticated admins land on the dashboard (unless they explicitly
@@ -18,9 +21,19 @@
      [::session ::authenticated? true]
      [::nav     ::intent         ?intent]
      [::nav     ::submitting?    false]
-     :when (not (contains? player-sections ?intent))
+     :when (and (not (contains? player-sections ?intent))
+                (not (contains? admin-sections ?intent)))
      :then
      (o/insert! ::nav ::current-section :dashboard)]
+
+    ;; Live game tracker — an admin tool, requires an authenticated session
+    ::set-section-tracker
+    [:what
+     [::session ::authenticated? true]
+     [::nav     ::intent         :tracker]
+     [::nav     ::submitting?    false]
+     :then
+     (o/insert! ::nav ::current-section :tracker)]
 
     ;; Unauthenticated visitor with no special intent → landing page
     ::set-section-landing

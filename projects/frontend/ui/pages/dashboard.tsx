@@ -50,6 +50,7 @@ interface DashboardProps {
   apiBaseUrl?: string;
   onRefresh?: () => void;
   onLogout?: () => void;
+  onOpenTracker?: () => void;
 }
 
 export default function Dashboard(props: DashboardProps) {
@@ -738,6 +739,7 @@ export default function Dashboard(props: DashboardProps) {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onLogout={props.onLogout}
+        onOpenTracker={props.onOpenTracker}
       />
 
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">

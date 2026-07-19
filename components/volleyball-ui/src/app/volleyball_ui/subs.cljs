@@ -35,3 +35,13 @@
  ::loading?
  (fn [db _]
    (get-in db [:volleyball :loading?] true)))
+
+(re-frame/reg-sub
+ ::stat-games
+ (fn [db _]
+   (get-in db [:volleyball :stat-games] [])))
+
+(re-frame/reg-sub
+ ::save-game-status
+ (fn [db _]
+   (get-in db [:volleyball :save-game-status])))

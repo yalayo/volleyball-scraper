@@ -72,8 +72,9 @@
     :onGoHome       #(re-frame/dispatch [::events/change-active-section "home"])}])
 
 (defn player-dashboard-component []
+  ;; the page clears its own playerSession from localStorage before calling this
   [player-dashboard
-   {:onLogout #(re-frame/dispatch [::events/change-active-section "player-login"])}])
+   {:onLogout #(re-frame/dispatch [::events/change-active-section "home"])}])
 
 (defn submitting []
   [:div "Signing in…"])

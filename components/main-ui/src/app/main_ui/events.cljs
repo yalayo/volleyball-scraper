@@ -72,5 +72,5 @@
             (assoc-in [:user :token] nil)
             (assoc-in [:user :user-loged-in?] false)
             (assoc-in [:user :sign-out :loading?] false)
-            (assoc-in [:ui :active-section] "auth"))
+            (assoc-in [:ui :active-section] "home"))
     :rules/logout nil}))

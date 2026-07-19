@@ -8,7 +8,8 @@ import {
   FileText,
   Play,
   Gamepad2,
-  Volleyball
+  Volleyball,
+  LogOut
 } from "lucide-react";
 
 interface SidebarProps {
@@ -35,7 +36,7 @@ const linkItems = [
 
 // Collapses to an icon-only rail below lg so the content area keeps its space
 // on small screens; expands to the full labelled sidebar on large screens.
-export default function Sidebar({ onStartScraping, activeTab, onTabChange, onOpenTracker }: SidebarProps) {
+export default function Sidebar({ onStartScraping, activeTab, onTabChange, onOpenTracker, onLogout }: SidebarProps) {
   const itemClasses = (active: boolean) =>
     `w-full justify-center lg:justify-start ${active ? "" : "text-gray-700 hover:bg-gray-100"}`;
 
@@ -111,7 +112,7 @@ export default function Sidebar({ onStartScraping, activeTab, onTabChange, onOpe
       </nav>
 
       {/* Scraping Controls */}
-      <div className="p-1.5 lg:p-4 border-t border-gray-200">
+      <div className="p-1.5 lg:p-4 border-t border-gray-200 space-y-1.5">
         <Button
           onClick={onStartScraping}
           title="Start Scraping"
@@ -120,6 +121,17 @@ export default function Sidebar({ onStartScraping, activeTab, onTabChange, onOpe
           <Play className="w-4 h-4 shrink-0" />
           <span className="hidden lg:inline">Start Scraping</span>
         </Button>
+        {onLogout && (
+          <Button
+            variant="ghost"
+            onClick={onLogout}
+            title="Logout"
+            className="w-full flex items-center justify-center lg:space-x-2 text-gray-600 hover:text-red-600 hover:bg-red-50"
+          >
+            <LogOut className="w-4 h-4 shrink-0" />
+            <span className="hidden lg:inline">Logout</span>
+          </Button>
+        )}
       </div>
     </div>
   );

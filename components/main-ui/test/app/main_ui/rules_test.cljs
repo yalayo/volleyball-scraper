@@ -39,13 +39,21 @@
   (rules/insert-facts! true :superadmin)
   (is (= :dashboard (rules/current-section))))
 
-(deftest logout-returns-to-auth
+(deftest logout-returns-to-landing
   (rules/reset-session!)
   (rules/navigate-to! :auth)
   (rules/insert-facts! true :superadmin)
   (is (= :dashboard (rules/current-section)))
   (rules/logout!)
-  (is (= :auth (rules/current-section))))
+  (is (= :landing (rules/current-section))))
+
+(deftest player-logout-returns-to-landing
+  (rules/reset-session!)
+  (rules/navigate-to! :player-dashboard)
+  (is (= :player-dashboard (rules/current-section)))
+  ;; the player dashboard's onLogout navigates home after clearing its session
+  (rules/navigate-to! :home)
+  (is (= :landing (rules/current-section))))
 
 (deftest player-area-reachable
   (rules/reset-session!)

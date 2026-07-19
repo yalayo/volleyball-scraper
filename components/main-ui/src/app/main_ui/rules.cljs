@@ -124,11 +124,13 @@
                       (o/insert ::nav ::submitting? (boolean v))
                       o/fire-rules)))
 
-(defn logout! []
+(defn logout!
+  "Drops the authenticated facts and routes to the landing page."
+  []
   (swap! session #(-> %
                       (o/insert ::session ::authenticated? false)
                       (o/insert ::user    ::role           :guest)
-                      (o/insert ::nav     ::intent         :auth)
+                      (o/insert ::nav     ::intent         :home)
                       o/fire-rules)))
 
 (defn insert-facts!

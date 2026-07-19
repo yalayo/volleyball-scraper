@@ -54,7 +54,7 @@
   (re-frame/dispatch-sync [::events/restore-nav])
   (is (= :dashboard (rules/current-section))))
 
-(deftest sign-out-returns-to-login
+(deftest sign-out-returns-to-landing
   (rules/reset-session!)
   (reset! rf-db/app-db {:user {:user-loged-in? true
                                :info {:username "superadmin" :role "superadmin"}}})
@@ -62,4 +62,6 @@
   (re-frame/dispatch-sync [::events/change-active-section "dashboard"])
   (is (= :dashboard (rules/current-section)))
   (re-frame/dispatch-sync [::events/signed-out])
-  (is (= :auth (rules/current-section))))
+  (is (= :landing (rules/current-section)))
+  (is (nil? (get-in @rf-db/app-db [:user :token])) "JWT token removed")
+  (is (false? (get-in @rf-db/app-db [:user :user-loged-in?]))))

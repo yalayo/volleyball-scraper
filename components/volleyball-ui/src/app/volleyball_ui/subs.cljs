@@ -45,3 +45,8 @@
  ::save-game-status
  (fn [db _]
    (get-in db [:volleyball :save-game-status])))
+
+(re-frame/reg-sub
+ ::tracker-match-id
+ (fn [db _]
+   (get-in db [:volleyball :tracker-match-id])))

@@ -1,9 +1,10 @@
 import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Trophy, Users, Calendar, MapPin } from "lucide-react";
+import { Trophy, Users, Calendar, MapPin, ClipboardList } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { Match, Team, League } from "@shared/schema";
 
@@ -17,10 +18,11 @@ interface MatchDetailsModalProps {
   leagues?: League[];
   onViewTeam?: (team: TeamWithLeague) => void;
   onViewLeague?: (league: League) => void;
+  onTrackMatch?: (match: Match) => void;
 }
 
 export default function MatchDetailsModal({
-  open, onClose, match, teams = [], leagues = [], onViewTeam, onViewLeague,
+  open, onClose, match, teams = [], leagues = [], onViewTeam, onViewLeague, onTrackMatch,
 }: MatchDetailsModalProps) {
   if (!match) return null;
 
@@ -113,6 +115,14 @@ export default function MatchDetailsModal({
                   {homeSets > awaySets ? match.homeTeamName : awaySets > homeSets ? match.awayTeamName : "Tie"} Wins
                 </Badge>
               </div>
+              {match.status === "scheduled" && onTrackMatch && (
+                <div className="mt-4 flex justify-center">
+                  <Button onClick={() => onTrackMatch(match)} className="bg-indigo-700 hover:bg-indigo-800">
+                    <ClipboardList className="w-4 h-4 mr-2" />
+                    Start Recording Stats
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 

@@ -50,7 +50,7 @@ interface DashboardProps {
   apiBaseUrl?: string;
   onRefresh?: () => void;
   onLogout?: () => void;
-  onOpenTracker?: () => void;
+  onOpenTracker?: (matchId?: string) => void;
 }
 
 export default function Dashboard(props: DashboardProps) {
@@ -85,6 +85,13 @@ export default function Dashboard(props: DashboardProps) {
     open: boolean;
     match: Match | null;
   }>({ open: false, match: null });
+
+  const handleTrackMatch = (match: Match) => {
+    setMatchDetailsModal({ open: false, match: null });
+    // match.id is typed as number (stale Drizzle-era schema) but is really a
+    // storage UUID string at runtime — see TeamDetailModal etc. for the same.
+    props.onOpenTracker?.(String(match.id));
+  };
 
   // Drill-down navigation: any click into a related entity closes whatever
   // detail modal is currently open and opens the destination, so the user
@@ -842,6 +849,7 @@ export default function Dashboard(props: DashboardProps) {
           setMatchDetailsModal({ open: false, match: null });
           handleViewLeague(league);
         }}
+        onTrackMatch={handleTrackMatch}
       />
     </div>
   );

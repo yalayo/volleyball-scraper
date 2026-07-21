@@ -151,6 +151,19 @@
  (fn [db _]
    (assoc-in db [:volleyball :save-game-status] nil)))
 
+;; Tracker deep-link — lets other screens (e.g. Match Details) send the user
+;; straight into the tracker with a scheduled match's teams pre-selected.
+
+(re-frame/reg-event-db
+ ::set-tracker-match-id
+ (fn [db [_ match-id]]
+   (assoc-in db [:volleyball :tracker-match-id] match-id)))
+
+(re-frame/reg-event-db
+ ::clear-tracker-match-id
+ (fn [db _]
+   (update db :volleyball dissoc :tracker-match-id)))
+
 ;; Errors
 
 (re-frame/reg-event-fx

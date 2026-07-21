@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,11 +19,15 @@ import {
   Swords,
   Hand,
   CheckCircle,
+  Link2,
+  ArrowRight,
+  ListChecks,
 } from "lucide-react";
 
 // Live game statistics tracker, adapted from
 // github.com/yalayo/volleyball-stats for this app's architecture:
-// data in via props (scraped teams/rosters), results out via onSave.
+// data in via props (scraped teams/rosters/scheduled matches), results out
+// via onSave.
 
 interface ScrapedTeam {
   id: string;
@@ -36,9 +41,24 @@ interface ScrapedPlayer {
   teamId?: string;
 }
 
+interface ScrapedMatch {
+  id: string;
+  homeTeamId?: string | null;
+  awayTeamId?: string | null;
+  homeTeamName?: string | null;
+  awayTeamName?: string | null;
+  matchDate?: string | null;
+  status?: string | null;
+  leagueName?: string | null;
+}
+
 interface GameTrackerProps {
   teams?: ScrapedTeam[];
   players?: ScrapedPlayer[];
+  matches?: ScrapedMatch[];
+  /** Deep-link from Match Details' "Start Recording Stats" — skips straight
+   *  to the starting-lineup step with both teams already prefilled. */
+  initialMatchId?: string;
   saveStatus?: "saving" | "saved" | "error" | null;
   onSave?: (payload: unknown) => void;
   onExit?: () => void;
@@ -46,16 +66,26 @@ interface GameTrackerProps {
 
 type Phase = "setup" | "live" | "summary";
 type Mode = "serve" | "attack" | "block";
+// "teams" picks/names the two sides; "lineup" assigns real players to the
+// six starting court positions before the game can begin.
+type SetupStep = "teams" | "lineup";
+
+interface RosterPlayer {
+  playerNumber: number;
+  name?: string;
+}
 
 interface SideSetup {
   name: string;
   scrapedTeamId: string;
-  players: { playerNumber: number; name?: string }[];
+  roster: RosterPlayer[]; // full scraped roster, empty when set up manually
+  players: RosterPlayer[]; // the 6 starting positions, index 0 = position 1 (serves)
 }
 
 const defaultSide = (team: TrackerTeam): SideSetup => ({
   name: team === "A" ? "Team A" : "Team B",
   scrapedTeamId: "",
+  roster: [],
   players: Array.from({ length: 6 }, (_, i) => ({
     playerNumber: team === "A" ? i + 1 : i + 7,
   })),
@@ -64,16 +94,25 @@ const defaultSide = (team: TrackerTeam): SideSetup => ({
 export default function GameTracker({
   teams = [],
   players = [],
+  matches = [],
+  initialMatchId,
   saveStatus,
   onSave,
   onExit,
 }: GameTrackerProps) {
   const tracker = useGameTracker();
   const [phase, setPhase] = useState<Phase>("setup");
+  const [setupStep, setSetupStep] = useState<SetupStep>("teams");
   const [mode, setMode] = useState<Mode>("serve");
   const [sideA, setSideA] = useState<SideSetup>(() => defaultSide("A"));
   const [sideB, setSideB] = useState<SideSetup>(() => defaultSide("B"));
   const [firstServer, setFirstServer] = useState<TrackerTeam>("A");
+  const [selectedMatchId, setSelectedMatchId] = useState("");
+
+  const scheduledMatches = useMemo(
+    () => matches.filter((m) => m.status === "scheduled"),
+    [matches]
+  );
 
   // A reload during a live game restores it from localStorage.
   useEffect(() => {
@@ -81,26 +120,105 @@ export default function GameTracker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tracker.state]);
 
+  // Every mode requires an explicit "arm" (see use-game-tracker's
+  // selectPosition — an unarmed tap is ignored on purpose). Arm the current
+  // mode whenever tracking starts, and re-arm it after every recorded point
+  // so serve/attack can be recorded rally after rally without re-clicking
+  // the mode tab each time. Block intentionally stays unarmed after scoring:
+  // the blocker count (1/2/3) can differ on the next rally, so the UI hides
+  // its court until the count is picked again.
+  const actionsCount = tracker.state?.actions.length ?? 0;
+  const prevActionsCount = useRef(0);
+  useEffect(() => {
+    if (phase !== "live") return;
+    const justScored = actionsCount > prevActionsCount.current;
+    prevActionsCount.current = actionsCount;
+    if (!justScored) return;
+    if (mode === "attack") tracker.selectAction("attack-point");
+    else if (mode === "serve") tracker.selectAction("serve-success");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actionsCount, phase]);
+
+  useEffect(() => {
+    if (phase !== "live") return;
+    if (mode === "attack") tracker.selectAction("attack-point");
+    else if (mode === "serve") tracker.selectAction("serve-success");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
+
+  // Populates the side's full roster (players with a real scraped jersey
+  // number only — those double as the picker's option values). The starting
+  // six default to the lowest jersey numbers, but the lineup step lets the
+  // coach reassign any of them to any roster player before the game starts.
   const applyScrapedTeam = (team: TrackerTeam, scrapedTeamId: string) => {
     const setter = team === "A" ? setSideA : setSideB;
     if (!scrapedTeamId) {
-      setter((prev) => ({ ...prev, scrapedTeamId: "" }));
+      setter((prev) => ({ ...prev, scrapedTeamId: "", roster: [] }));
       return;
     }
     const scraped = teams.find((t) => t.id === scrapedTeamId);
-    const roster = players
-      .filter((p) => p.teamId === scrapedTeamId)
-      .sort(
-        (a, b) => (parseInt(a.jerseyNumber || "99", 10) || 99) - (parseInt(b.jerseyNumber || "99", 10) || 99)
-      );
+    const roster: RosterPlayer[] = players
+      .filter((p) => p.teamId === scrapedTeamId && parseInt(p.jerseyNumber || "", 10) > 0)
+      .map((p) => ({ playerNumber: parseInt(p.jerseyNumber as string, 10), name: p.name }))
+      .sort((a, b) => a.playerNumber - b.playerNumber);
     setter((prev) => ({
       name: scraped?.name ?? prev.name,
       scrapedTeamId,
-      players: Array.from({ length: 6 }, (_, i) => ({
-        playerNumber: parseInt(roster[i]?.jerseyNumber || "", 10) || i + (team === "A" ? 1 : 7),
-        name: roster[i]?.name,
-      })),
+      roster,
+      // No published roster yet (common preseason) — keep manual numbers.
+      players: roster.length > 0
+        ? Array.from({ length: 6 }, (_, i) => roster[i] ?? { playerNumber: 0 })
+        : prev.players,
     }));
+  };
+
+  const applyScheduledMatch = (matchId: string) => {
+    setSelectedMatchId(matchId);
+    if (!matchId) return;
+    const match = matches.find((m) => m.id === matchId);
+    if (!match) return;
+    if (match.homeTeamId) {
+      applyScrapedTeam("A", match.homeTeamId);
+    } else if (match.homeTeamName) {
+      setSideA((prev) => ({ ...prev, name: match.homeTeamName as string, scrapedTeamId: "" }));
+    }
+    if (match.awayTeamId) {
+      applyScrapedTeam("B", match.awayTeamId);
+    } else if (match.awayTeamName) {
+      setSideB((prev) => ({ ...prev, name: match.awayTeamName as string, scrapedTeamId: "" }));
+    }
+  };
+
+  // Deep-link from Match Details: prefill both teams and jump straight to
+  // assigning the starting lineup — applied once per tracker visit.
+  const initialMatchAppliedRef = useRef(false);
+  useEffect(() => {
+    if (phase === "setup" && initialMatchId && !initialMatchAppliedRef.current) {
+      initialMatchAppliedRef.current = true;
+      applyScheduledMatch(initialMatchId);
+      setSetupStep("lineup");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialMatchId, phase]);
+
+  // Assigns a specific roster player to one of the six starting positions.
+  const assignRosterPlayer = (team: TrackerTeam, index: number, playerNumber: number) => {
+    const setter = team === "A" ? setSideA : setSideB;
+    setter((prev) => {
+      const chosen = prev.roster.find((p) => p.playerNumber === playerNumber);
+      const next = [...prev.players];
+      next[index] = chosen ? { ...chosen } : { playerNumber: 0 };
+      return { ...prev, players: next };
+    });
+  };
+
+  // Roster players not already placed in another starting slot — keeps the
+  // same player from being assigned to two positions at once.
+  const availableRosterFor = (side: SideSetup, index: number): RosterPlayer[] => {
+    const usedElsewhere = new Set(
+      side.players.filter((_, i) => i !== index).map((p) => p.playerNumber).filter(Boolean)
+    );
+    return side.roster.filter((p) => !usedElsewhere.has(p.playerNumber));
   };
 
   const updateJersey = (team: TrackerTeam, index: number, value: string) => {
@@ -118,19 +236,37 @@ export default function GameTracker({
       teamBName: sideB.name || "Team B",
       teamAId: sideA.scrapedTeamId || undefined,
       teamBId: sideB.scrapedTeamId || undefined,
+      matchId: selectedMatchId || undefined,
       teamAPlayers: sideA.players,
       teamBPlayers: sideB.players,
       firstServer,
     };
     tracker.startGame(setup);
     setMode("serve");
+    prevActionsCount.current = 0;
     setPhase("live");
   };
 
   const handleModeChange = (next: Mode) => {
     setMode(next);
     if (next === "attack") tracker.selectAction("attack-point");
+    else if (next === "serve") tracker.selectAction("serve-success");
     else tracker.clearActionState();
+  };
+
+  // Undo and End Set both clear the armed action state (a fresh rally may
+  // need a different mode). Re-arm the mode the user is still looking at so
+  // they can keep tapping without reselecting the tab.
+  const handleUndo = () => {
+    tracker.undo();
+    if (mode === "attack") tracker.selectAction("attack-point");
+    else if (mode === "serve") tracker.selectAction("serve-success");
+  };
+
+  const handleEndSet = () => {
+    tracker.endSet();
+    setMode("serve");
+    tracker.selectAction("serve-success");
   };
 
   const handleExit = () => {
@@ -154,92 +290,189 @@ export default function GameTracker({
       .filter((p) => p.team === team)
       .sort((a, b) => b.totalPoints - a.totalPoints);
 
+  const matchLabel = (m: ScrapedMatch) => {
+    const when = m.matchDate ? format(new Date(m.matchDate), "MMM d") : "TBD";
+    const teamsLabel = `${m.homeTeamName ?? "?"} vs ${m.awayTeamName ?? "?"}`;
+    return m.leagueName ? `${when} — ${teamsLabel} (${m.leagueName})` : `${when} — ${teamsLabel}`;
+  };
+
   // ── Setup ──────────────────────────────────────────────────────────────────
 
   if (phase === "setup" || !state) {
+    const canProceedToLineup = sideA.name.trim() && sideB.name.trim();
+
     return (
       <div className="min-h-screen bg-gray-50">
         <header className="bg-indigo-700 text-white sticky top-0 z-40 shadow">
           <div className="px-3 py-2.5 flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="text-white hover:bg-indigo-600 px-2" onClick={handleExit} title="Back">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-white hover:bg-indigo-600 px-2"
+              onClick={setupStep === "lineup" ? () => setSetupStep("teams") : handleExit}
+              title="Back"
+            >
               <ArrowLeft className="w-4 h-4" />
             </Button>
-            <h1 className="text-base font-semibold">New Game</h1>
+            <h1 className="text-base font-semibold">
+              {setupStep === "teams" ? "New Game" : "Starting Lineup"}
+            </h1>
           </div>
         </header>
 
-        <main className="p-3 max-w-3xl mx-auto space-y-3 pb-24">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {([["A", sideA], ["B", sideB]] as [TrackerTeam, SideSetup][]).map(([team, side]) => (
-              <Card key={team}>
+        {setupStep === "teams" && (
+          <main className="p-3 max-w-3xl mx-auto space-y-3 pb-24">
+            {scheduledMatches.length > 0 && (
+              <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className={`text-sm ${team === "A" ? "text-blue-700" : "text-red-700"}`}>
-                    Team {team}
+                  <CardTitle className="text-sm flex items-center gap-1.5">
+                    <Link2 className="w-4 h-4" />
+                    Start from a scheduled game
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2">
-                  <Input
-                    value={side.name}
-                    placeholder={`Team ${team} name`}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      (team === "A" ? setSideA : setSideB)((prev) => ({ ...prev, name: e.target.value }))
-                    }
-                  />
-                  {teams.length > 0 && (
-                    <select
-                      className="w-full h-9 rounded-md border border-gray-300 bg-white px-2 text-sm"
-                      value={side.scrapedTeamId}
-                      onChange={(e) => applyScrapedTeam(team, e.target.value)}
-                    >
-                      <option value="">Prefill from scraped team…</option>
-                      {teams.map((t) => (
-                        <option key={t.id} value={t.id}>{t.name}</option>
-                      ))}
-                    </select>
-                  )}
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {side.players.map((p, i) => (
-                      <label key={i} className="text-[11px] text-gray-500">
-                        P{i + 1}{i === 0 ? " (serves)" : ""}
-                        <Input
-                          type="number"
-                          inputMode="numeric"
-                          className="h-9 mt-0.5 text-center font-bold"
-                          value={p.playerNumber || ""}
-                          title={p.name}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateJersey(team, i, e.target.value)}
-                        />
-                        {p.name && <span className="block truncate text-[10px] text-gray-400">{p.name}</span>}
-                      </label>
+                <CardContent>
+                  <select
+                    className="w-full h-9 rounded-md border border-gray-300 bg-white px-2 text-sm"
+                    value={selectedMatchId}
+                    onChange={(e) => applyScheduledMatch(e.target.value)}
+                  >
+                    <option value="">Manual setup…</option>
+                    {scheduledMatches.map((m) => (
+                      <option key={m.id} value={m.id}>{matchLabel(m)}</option>
                     ))}
-                  </div>
+                  </select>
+                  {selectedMatchId && (
+                    <div className="text-[11px] text-gray-500 mt-1.5">
+                      Rosters prefilled where available — you'll assign the starting six next.
+                    </div>
+                  )}
                 </CardContent>
               </Card>
-            ))}
-          </div>
+            )}
 
-          <Card>
-            <CardContent className="pt-4 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">First serve:</span>
-                {(["A", "B"] as TrackerTeam[]).map((t) => (
-                  <Button
-                    key={t}
-                    size="sm"
-                    variant={firstServer === t ? "default" : "outline"}
-                    onClick={() => setFirstServer(t)}
-                  >
-                    Team {t}
-                  </Button>
-                ))}
-              </div>
-              <Button className="bg-indigo-700 hover:bg-indigo-800 px-6" onClick={handleStart}>
-                <Volleyball className="w-4 h-4 mr-2" />
-                Start Game
-              </Button>
-            </CardContent>
-          </Card>
-        </main>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {([["A", sideA], ["B", sideB]] as [TrackerTeam, SideSetup][]).map(([team, side]) => (
+                <Card key={team}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className={`text-sm ${team === "A" ? "text-blue-700" : "text-red-700"}`}>
+                      Team {team}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <Input
+                      value={side.name}
+                      placeholder={`Team ${team} name`}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        (team === "A" ? setSideA : setSideB)((prev) => ({ ...prev, name: e.target.value }))
+                      }
+                    />
+                    {teams.length > 0 && (
+                      <select
+                        className="w-full h-9 rounded-md border border-gray-300 bg-white px-2 text-sm"
+                        value={side.scrapedTeamId}
+                        onChange={(e) => applyScrapedTeam(team, e.target.value)}
+                      >
+                        <option value="">Prefill from scraped team…</option>
+                        {teams.map((t) => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    )}
+                    <div className="text-[11px] text-gray-500">
+                      {side.roster.length > 0
+                        ? `${side.roster.length} players on roster — pick the starting six next.`
+                        : "No published roster — you'll enter jersey numbers next."}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <Card>
+              <CardContent className="pt-4 flex justify-end">
+                <Button
+                  className="bg-indigo-700 hover:bg-indigo-800 px-6"
+                  disabled={!canProceedToLineup}
+                  onClick={() => setSetupStep("lineup")}
+                >
+                  <ListChecks className="w-4 h-4 mr-2" />
+                  Next: Assign Starting Lineup
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </CardContent>
+            </Card>
+          </main>
+        )}
+
+        {setupStep === "lineup" && (
+          <main className="p-3 max-w-3xl mx-auto space-y-3 pb-24">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {([["A", sideA], ["B", sideB]] as [TrackerTeam, SideSetup][]).map(([team, side]) => (
+                <Card key={team}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className={`text-sm ${team === "A" ? "text-blue-700" : "text-red-700"}`}>
+                      {side.name} — starting six
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {side.players.map((p, i) => (
+                        <label key={i} className="text-[11px] text-gray-500">
+                          P{i + 1}{i === 0 ? " (serves)" : ""}
+                          {side.roster.length > 0 ? (
+                            <select
+                              className="w-full h-9 mt-0.5 rounded-md border border-gray-300 bg-white text-center text-sm font-bold"
+                              value={p.playerNumber || ""}
+                              onChange={(e) => assignRosterPlayer(team, i, parseInt(e.target.value, 10) || 0)}
+                            >
+                              <option value="">—</option>
+                              {availableRosterFor(side, i).map((r) => (
+                                <option key={r.playerNumber} value={r.playerNumber}>
+                                  #{r.playerNumber} {r.name ?? ""}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <Input
+                              type="number"
+                              inputMode="numeric"
+                              className="h-9 mt-0.5 text-center font-bold"
+                              value={p.playerNumber || ""}
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateJersey(team, i, e.target.value)}
+                            />
+                          )}
+                          {p.name && <span className="block truncate text-[10px] text-gray-400">{p.name}</span>}
+                        </label>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <Card>
+              <CardContent className="pt-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">First serve:</span>
+                  {(["A", "B"] as TrackerTeam[]).map((t) => (
+                    <Button
+                      key={t}
+                      size="sm"
+                      variant={firstServer === t ? "default" : "outline"}
+                      onClick={() => setFirstServer(t)}
+                    >
+                      Team {t}
+                    </Button>
+                  ))}
+                </div>
+                <Button className="bg-indigo-700 hover:bg-indigo-800 px-6" onClick={handleStart}>
+                  <Volleyball className="w-4 h-4 mr-2" />
+                  Start Game
+                </Button>
+              </CardContent>
+            </Card>
+          </main>
+        )}
       </div>
     );
   }
@@ -379,12 +612,18 @@ export default function GameTracker({
             size="sm"
             className="text-white hover:bg-indigo-600 px-2 disabled:opacity-30"
             disabled={!tracker.canUndo}
-            onClick={tracker.undo}
+            onClick={handleUndo}
             title="Undo last rally"
           >
             <Undo2 className="w-4 h-4" />
           </Button>
         </div>
+        {state.matchId && (
+          <div className="px-2 pb-1.5 flex items-center gap-1 text-[10px] text-indigo-200">
+            <Link2 className="w-3 h-3" />
+            Linked to scheduled match
+          </div>
+        )}
       </header>
 
       <main className="p-2 max-w-5xl mx-auto pb-20">
@@ -538,7 +777,7 @@ export default function GameTracker({
       {/* Bottom action bar — thumb reach on phones */}
       <div className="fixed bottom-0 inset-x-0 bg-white border-t shadow-lg z-40">
         <div className="max-w-5xl mx-auto p-2 grid grid-cols-2 gap-2">
-          <Button variant="outline" className="border-amber-500 text-amber-600 hover:bg-amber-50" onClick={tracker.endSet}>
+          <Button variant="outline" className="border-amber-500 text-amber-600 hover:bg-amber-50" onClick={handleEndSet}>
             End Set {state.setNumber}
           </Button>
           <Button className="bg-red-600 hover:bg-red-700" onClick={() => setPhase("summary")}>

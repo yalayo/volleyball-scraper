@@ -46,24 +46,36 @@
         :apiBaseUrl  (api-config/get-api-url)
         :onRefresh   #(re-frame/dispatch [::vb-events/load-data])
         :onLogout    #(re-frame/dispatch [::events/sign-out])
-        :onOpenTracker #(re-frame/dispatch [::events/change-active-section "tracker"])}])))
+        :onOpenTracker (fn [match-id]
+                         (when (string? match-id)
+                           (re-frame/dispatch [::vb-events/set-tracker-match-id match-id]))
+                         (re-frame/dispatch [::events/change-active-section "tracker"]))}])))
 
 (defn tracker-component []
-  ;; roster data for team prefill; a fresh status for every tracker visit
-  (re-frame/dispatch [::vb-events/load-data])
-  (re-frame/dispatch [::vb-events/reset-save-game-status])
-  (fn []
-    (let [teams       @(re-frame/subscribe [::vb-subs/teams])
-          players     @(re-frame/subscribe [::vb-subs/players])
-          save-status @(re-frame/subscribe [::vb-subs/save-game-status])]
-      [game-tracker
-       {:teams      (clj->js teams)
-        :players    (clj->js players)
-        :saveStatus save-status
-        :onSave     (fn [payload]
-                      (re-frame/dispatch [::vb-events/save-game
-                                          (js->clj payload :keywordize-keys true)]))
-        :onExit     #(re-frame/dispatch [::events/change-active-section "dashboard"])}])))
+  ;; roster data for team prefill; a fresh status for every tracker visit.
+  ;; initial-match-id is captured once at mount (form-2 component) and
+  ;; immediately cleared from app-db so the next plain "New Game" visit
+  ;; doesn't see stale deep-link state.
+  (let [initial-match-id @(re-frame/subscribe [::vb-subs/tracker-match-id])]
+    (re-frame/dispatch [::vb-events/load-data])
+    (re-frame/dispatch [::vb-events/reset-save-game-status])
+    (when initial-match-id
+      (re-frame/dispatch [::vb-events/clear-tracker-match-id]))
+    (fn []
+      (let [teams       @(re-frame/subscribe [::vb-subs/teams])
+            players     @(re-frame/subscribe [::vb-subs/players])
+            matches     @(re-frame/subscribe [::vb-subs/matches])
+            save-status @(re-frame/subscribe [::vb-subs/save-game-status])]
+        [game-tracker
+         {:teams          (clj->js teams)
+          :players        (clj->js players)
+          :matches        (clj->js matches)
+          :initialMatchId initial-match-id
+          :saveStatus     save-status
+          :onSave         (fn [payload]
+                            (re-frame/dispatch [::vb-events/save-game
+                                                (js->clj payload :keywordize-keys true)]))
+          :onExit         #(re-frame/dispatch [::events/change-active-section "dashboard"])}]))))
 
 (defn player-login-component []
   [player-login

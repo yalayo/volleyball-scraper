@@ -14,6 +14,7 @@
      :name        (:stat-game/name e)
      :teamAName   (:stat-game/team-a-name e)
      :teamBName   (:stat-game/team-b-name e)
+     :matchId     (:stat-game/match-id e)
      :date        (:stat-game/date e)
      :setsWonA    (:stat-game/sets-won-a e)
      :setsWonB    (:stat-game/sets-won-b e)
@@ -26,9 +27,10 @@
 (defn save!+
   "Persists one finished (or abandoned) tracked game. `data` is the camelCase
    payload assembled by the tracker UI; the whole nested structure is stored
-   as a single JSON fact, with the headline fields lifted out as their own
-   attributes for listing. Resolves to the new eid."
-  [{:keys [name teamAName teamBName date sets] :as data}]
+   as a single JSON fact, with the headline fields (including the originating
+   scheduled matchId, when the game was started from one) lifted out as their
+   own attributes for listing. Resolves to the new eid."
+  [{:keys [name teamAName teamBName matchId date sets] :as data}]
   (let [sets-won (fn [team]
                    (count (filter #(= team (:winner %)) sets)))]
     (-> (storage/transact!
@@ -36,6 +38,7 @@
                   :stat-game/name        (or name (str teamAName " vs " teamBName))
                   :stat-game/team-a-name teamAName
                   :stat-game/team-b-name teamBName
+                  :stat-game/match-id    matchId
                   :stat-game/date        (or date (now))
                   :stat-game/sets-won-a  (sets-won "A")
                   :stat-game/sets-won-b  (sets-won "B")

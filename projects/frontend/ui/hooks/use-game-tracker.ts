@@ -21,14 +21,24 @@ export interface TrackerPlayer {
   name?: string;
 }
 
+// One recorded point, carrying everything needed to replay the game later:
+// who was where (lineupBefore, for BOTH teams), what happened (type/position/
+// target/blockers), who was credited, and the resulting score/serve/rotation.
 export interface TrackerAction {
   id: string;
   type: TrackerActionType;
-  position: TrackerPosition;
-  targetPosition?: TrackerPosition;
-  blockPositions?: TrackerPosition[];
-  playerNumber?: number;
-  team?: TrackerTeam;
+  team: TrackerTeam; // scoring team
+  setNumber: number;
+  position: TrackerPosition; // acting player's court position
+  targetPosition?: TrackerPosition; // serve/attack landing position
+  blockPositions?: TrackerPosition[]; // all blocker positions, for block-2/3
+  playerNumber?: number; // primary acting player (server/attacker/first blocker)
+  creditedPlayerNumbers: number[]; // every player awarded a point by this rally
+  servingTeamBefore: TrackerTeam;
+  lineupBefore: TrackerPlayer[]; // full 12-player court state before the rally
+  teamAScoreAfter: number;
+  teamBScoreAfter: number;
+  rotated: boolean; // true when this rally caused a side-out rotation
   timestamp: string;
 }
 
@@ -61,6 +71,7 @@ export interface TrackerState {
   teamBName: string;
   teamAId?: string;
   teamBId?: string;
+  matchId?: string;
   teamAScore: number;
   teamBScore: number;
   servingTeam: TrackerTeam;
@@ -85,6 +96,7 @@ export interface GameSetup {
   teamBName: string;
   teamAId?: string;
   teamBId?: string;
+  matchId?: string;
   teamAPlayers: { playerNumber: number; name?: string }[]; // index 0 = position 1
   teamBPlayers: { playerNumber: number; name?: string }[];
   firstServer: TrackerTeam;
@@ -151,6 +163,7 @@ export function useGameTracker() {
       teamBName: setup.teamBName,
       teamAId: setup.teamAId,
       teamBId: setup.teamBId,
+      matchId: setup.matchId,
       teamAScore: 0,
       teamBScore: 0,
       servingTeam: setup.firstServer,
@@ -212,76 +225,73 @@ export function useGameTracker() {
     return next;
   };
 
-  // Applies one rally result: score, side-out rotation and player credit.
-  const applyRally = useCallback(
-    (prev: TrackerState, action: TrackerAction): TrackerState => {
-      let next: TrackerState = {
-        ...prev,
-        actions: [...prev.actions, action],
-        teamStats: { A: { ...prev.teamStats.A }, B: { ...prev.teamStats.B } },
-      };
-      let scoringTeam: TrackerTeam;
+  // Applies one rally's scoring/crediting/rotation against `prev` (does not
+  // touch prev.actions — the caller assembles and appends the full action
+  // record once the resulting score/rotation are known).
+  const applyRally = (
+    prev: TrackerState,
+    type: TrackerActionType,
+    position: TrackerPosition,
+    blockPositions?: TrackerPosition[]
+  ): { next: TrackerState; scoringTeam: TrackerTeam; creditedPlayerNumbers: number[] } => {
+    let next: TrackerState = {
+      ...prev,
+      teamStats: { A: { ...prev.teamStats.A }, B: { ...prev.teamStats.B } },
+    };
+    let scoringTeam: TrackerTeam;
+    let creditedPlayerNumbers: number[] = [];
 
-      switch (action.type) {
-        case "serve-success": {
-          scoringTeam = prev.servingTeam;
-          next.teamStats[scoringTeam].serveSuccess += 1;
-          const server = prev.lineup.find(
-            (p) => p.team === scoringTeam && p.position === 1
-          );
-          next.playerPoints = creditPlayer(prev.playerPoints, server, "servePoints");
-          break;
-        }
-        case "serve-fail": {
-          const failing = prev.servingTeam;
-          scoringTeam = failing === "A" ? "B" : "A";
-          next.teamStats[failing].serveFail += 1;
-          break;
-        }
-        case "attack-point": {
-          scoringTeam = teamOf(action.position);
-          next.teamStats[scoringTeam].attackPoints += 1;
-          next.playerPoints = creditPlayer(
-            prev.playerPoints,
-            prev.lineup.find(
-              (p) =>
-                p.team === scoringTeam &&
-                p.position === positionNumberOf(action.position)
-            ),
-            "attackPoints"
-          );
-          break;
-        }
-        default: {
-          // block-1 / block-2 / block-3 — every blocker gets credit
-          scoringTeam = teamOf(action.position);
-          next.teamStats[scoringTeam].blockPoints += 1;
-          let credited = prev.playerPoints;
-          (action.blockPositions ?? [action.position]).forEach((pos) => {
-            credited = creditPlayer(
-              credited,
-              prev.lineup.find(
-                (p) => p.team === teamOf(pos) && p.position === positionNumberOf(pos)
-              ),
-              "blockPoints"
-            );
-          });
-          next.playerPoints = credited;
-        }
+    switch (type) {
+      case "serve-success": {
+        scoringTeam = prev.servingTeam;
+        next.teamStats[scoringTeam].serveSuccess += 1;
+        const server = prev.lineup.find((p) => p.team === scoringTeam && p.position === 1);
+        next.playerPoints = creditPlayer(prev.playerPoints, server, "servePoints");
+        if (server) creditedPlayerNumbers = [server.playerNumber];
+        break;
       }
-
-      if (scoringTeam === "A") next.teamAScore = prev.teamAScore + 1;
-      else next.teamBScore = prev.teamBScore + 1;
-
-      // Side out: the receiving team wins the rally, gains serve and rotates.
-      if (prev.servingTeam !== scoringTeam) {
-        next.servingTeam = scoringTeam;
-        next.lineup = rotateLineup(next.lineup, scoringTeam);
+      case "serve-fail": {
+        const failing = prev.servingTeam;
+        scoringTeam = failing === "A" ? "B" : "A";
+        next.teamStats[failing].serveFail += 1;
+        break;
       }
-      return next;
-    },
-    []
-  );
+      case "attack-point": {
+        scoringTeam = teamOf(position);
+        next.teamStats[scoringTeam].attackPoints += 1;
+        const attacker = prev.lineup.find(
+          (p) => p.team === scoringTeam && p.position === positionNumberOf(position)
+        );
+        next.playerPoints = creditPlayer(prev.playerPoints, attacker, "attackPoints");
+        if (attacker) creditedPlayerNumbers = [attacker.playerNumber];
+        break;
+      }
+      default: {
+        // block-1 / block-2 / block-3 — every blocker gets credit
+        scoringTeam = teamOf(position);
+        next.teamStats[scoringTeam].blockPoints += 1;
+        let credited = prev.playerPoints;
+        (blockPositions ?? [position]).forEach((pos) => {
+          const blocker = prev.lineup.find(
+            (p) => p.team === teamOf(pos) && p.position === positionNumberOf(pos)
+          );
+          credited = creditPlayer(credited, blocker, "blockPoints");
+          if (blocker) creditedPlayerNumbers.push(blocker.playerNumber);
+        });
+        next.playerPoints = credited;
+      }
+    }
+
+    if (scoringTeam === "A") next.teamAScore = prev.teamAScore + 1;
+    else next.teamBScore = prev.teamBScore + 1;
+
+    // Side out: the receiving team wins the rally, gains serve and rotates.
+    if (prev.servingTeam !== scoringTeam) {
+      next.servingTeam = scoringTeam;
+      next.lineup = rotateLineup(next.lineup, scoringTeam);
+    }
+    return { next, scoringTeam, creditedPlayerNumbers };
+  };
 
   const recordAction = useCallback(
     (
@@ -294,31 +304,41 @@ export function useGameTracker() {
         if (!prev) return prev;
         setSnapshots((s) => [...s.slice(-49), prev]);
         const acting = prev.lineup.find(
-          (p) =>
-            p.team === teamOf(position) &&
-            p.position === positionNumberOf(position)
+          (p) => p.team === teamOf(position) && p.position === positionNumberOf(position)
         );
+        const { next, creditedPlayerNumbers } = applyRally(prev, type, position, blockPositions);
         const action: TrackerAction = {
           id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
           type,
+          team: teamOf(position),
+          setNumber: prev.setNumber,
           position,
           targetPosition,
           blockPositions,
           playerNumber: acting?.playerNumber,
-          team: teamOf(position),
+          creditedPlayerNumbers,
+          servingTeamBefore: prev.servingTeam,
+          lineupBefore: prev.lineup,
+          teamAScoreAfter: next.teamAScore,
+          teamBScoreAfter: next.teamBScore,
+          rotated: next.servingTeam !== prev.servingTeam,
           timestamp: new Date().toISOString(),
         };
-        return applyRally(prev, action);
+        return { ...next, actions: [...prev.actions, action] };
       });
       setActionState(emptyActionState);
     },
-    [applyRally]
+    []
   );
 
   // Tap flows (same interaction model as the reference app):
   //  - serve: pick landing spot on the receiving side, then Success/Fail
   //  - attack: pick source, then destination
   //  - block: pick 1/2/3 blockers on one side
+  // Every mode must be armed first via `selectAction` — a tap while nothing
+  // is armed is ignored rather than silently falling back to "serve" (that
+  // implicit fallback used to swallow the second tap of every action typed
+  // after the first one, since the recorded action resets actionType to null).
   const selectPosition = useCallback(
     (position: TrackerPosition) => {
       setActionState((prev) => {
@@ -346,16 +366,11 @@ export function useGameTracker() {
           }
           return { ...prev, selectedBlockPositions: chosen };
         }
-        // serve target: any tap while serve panel active marks the landing spot
-        return {
-          ...prev,
-          actionType:
-            type === "serve-success" || type === "serve-fail"
-              ? type
-              : "serve-success",
-          selectedPosition: position,
-          serveTargetSelected: true,
-        };
+        if (type === "serve-success" || type === "serve-fail") {
+          return { ...prev, selectedPosition: position, serveTargetSelected: true };
+        }
+        // Nothing armed — ignore the tap instead of guessing an action.
+        return prev;
       });
     },
     [recordAction]
@@ -364,6 +379,7 @@ export function useGameTracker() {
   const selectAction = useCallback(
     (type: TrackerActionType) => {
       setActionState((prev) => {
+        // If we're selecting a serve action and have a target selected, record it
         if (
           (type === "serve-success" || type === "serve-fail") &&
           prev.selectedPosition &&
@@ -445,6 +461,7 @@ export function useGameTracker() {
       teamBName: state.teamBName,
       teamAId: state.teamAId,
       teamBId: state.teamBId,
+      matchId: state.matchId,
       date: new Date().toISOString(),
       sets,
       playerStats: [...state.playerPoints].sort((a, b) => b.totalPoints - a.totalPoints),

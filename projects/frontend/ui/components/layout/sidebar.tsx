@@ -78,7 +78,7 @@ export default function Sidebar({ onStartScraping, activeTab, onTabChange, onOpe
                 className={itemClasses(false)}
                 size="sm"
                 title="Live Tracker"
-                onClick={onOpenTracker}
+                onClick={() => onOpenTracker()}
               >
                 <Volleyball className="w-4 h-4 shrink-0 lg:mr-3" />
                 <span className="hidden lg:inline">Live Tracker</span>
